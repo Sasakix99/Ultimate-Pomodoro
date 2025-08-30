@@ -1,0 +1,57 @@
+@import url('https://fonts.googleapis.com/css2?family=Nova+Square&family=Varela+Round&display=swap');
+
+/* Fond noir partout */
+html, body { height:100%; background:#000 !important; }
+.timer, .container, .row, .collapse, .card, .card-body, .panel, .panel-body { background:#000 !important; }
+* { box-sizing:border-box; }
+
+.container { min-width:220px; max-width:380px; }
+
+/* Titres & textes */
+.timer p, .title { color:#fff; font-family:'Varela Round', sans-serif; }
+.title { font-size:1.5em; margin-top:6px; }
+
+/* Anneau plus grand */
+.ring-wrap { width: 300px; margin: 12px auto 2px; position: relative; }
+.progress-ring { width:100%; height:auto; display:block; }
+.ring-bg { fill:none; stroke:rgba(255,255,255,.18) !important; stroke-width:12; }
+.ring-prog {
+  fill:none; stroke:#60a5fa !important; stroke-width:12; stroke-linecap:round;
+  transform:rotate(-90deg); transform-origin:50% 50%;
+  transition:stroke-dashoffset .35s ease;
+}
+
+/* Minuteur au centre de l’anneau */
+.ring-center {
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+}
+.clock-time {
+  font-family:'Nova Square', sans-serif;
+  font-size: clamp(44px, 9vw, 64px);
+  color:#fff !important; line-height:1; letter-spacing:.5px;
+  text-shadow:0 1px 0 rgba(0,0,0,.35);
+}
+
+/* Bandeau Sessions / Focus sous l’anneau */
+.info-row { margin-top: 8px; }
+.info-left { text-align:left; }
+.info-right { text-align:right; }
+.info-label { color:#bdbdbd; margin-right:6px; }
+.sessions-value { color:#ff3b3b !important; font-weight:700; }
+.focus-value { color:#fff; font-weight:600; }
+
+/* Boutons & collapses */
+.play-reset-row { font-size:1.5em; padding:1em; }
+.icon { cursor:pointer; } .icon:active { transform:scale(.94); }
+.btn.btn-primary { background:#2d81ff; border-color:#2d81ff; }
+.btn.btn-primary:hover, .btn.btn-primary:focus { filter:brightness(1.1); }
+.card.card-body { background:transparent; border:none; }
+.task-time-display, .break-time-display { font-size:1.5em; color:#fff !important; font-family:'Nova Square', sans-serif; }
+
+/* Boutons de présélection */
+.preset-row { margin-top:8px; }
+.btn-preset { background:#2b2b2b; color:#fff; border:1px solid #4c4c4c; border-radius:8px; margin-right:6px; }
+.btn-preset:hover, .btn-preset:focus { background:#3a3a3a; border-color:#626262; }
+
+/* hr discret clair */
+hr { background: rgba(255,255,255,.15) !important; height:1px; border:0; }
