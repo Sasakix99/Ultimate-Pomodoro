@@ -13,13 +13,27 @@
 <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 
+<!-- CSS critique inline pour survivre à l’embed Notion -->
+<style>
+  html,body{height:100%;background:#191919!important;margin:0}
+  .container,.row,.collapse,.card,.panel,.panel-body{background:transparent!important}
+  .btn.btn-primary{background:#fff!important;border-color:#fff!important;color:#000!important}
+  .btn.btn-primary:hover,.btn.btn-primary:focus{filter:brightness(.95);color:#000!important}
+  /* Empêche le disque noir si le CSS externe manque */
+  .progress-ring circle{fill:none}
+</style>
+
 <div class="container text-center timer">
   <!-- Anneau + minuteur -->
   <div class="row">
     <div class="ring-wrap center-block">
       <svg class="progress-ring" viewBox="0 0 180 180" aria-label="Progress">
-        <circle class="ring-bg" cx="90" cy="90" r="80"></circle>
-        <circle id="ringProgress" class="ring-prog" cx="90" cy="90" r="80"></circle>
+        <!-- Attributs SVG critiques en inline -->
+        <circle class="ring-bg" cx="90" cy="90" r="80"
+                fill="none" stroke="#ffffff" stroke-opacity="0.14" stroke-width="2"></circle>
+        <circle id="ringProgress" class="ring-prog" cx="90" cy="90" r="80"
+                fill="none" stroke="#22C55E" stroke-width="2" stroke-linecap="round"
+                transform="rotate(-90 90 90)"></circle>
       </svg>
       <div class="ring-center">
         <div id="clockTime" class="clock-time"></div>
