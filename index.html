@@ -1,25 +1,8 @@
-<!DOCTYPE html>
-<html lang="en" >
-<head>
-  <meta charset="UTF-8">
-  <title>Ultimate Pomodoro </title>
-  <link rel='stylesheet' href='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css'>
-<link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css'>
-<link rel='stylesheet' href='https://fonts.googleapis.com/css2?family=Nova+Square&amp;family=Varela+Round&amp;display=swap'><link rel="stylesheet" href="./style.css">
-
-</head>
-<body>
-<!-- partial:index.partial.html -->
-<!-- CSS externes si pas déjà dans Settings > CSS -->
 <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 
 <div class="container text-center timer">
-  <div class="row">
-    <h3 class="title">Ultimate Focus Pomodoro</h3>
-  </div>
-
-  <!-- Anneau + minuteur au centre -->
+  <!-- Anneau + minuteur -->
   <div class="row">
     <div class="ring-wrap center-block">
       <svg class="progress-ring" viewBox="0 0 180 180" aria-label="Progress">
@@ -32,7 +15,7 @@
     </div>
   </div>
 
-  <!-- Infos sous l’anneau -->
+  <!-- Infos -->
   <div class="row info-row">
     <div class="col-xs-6 info-left">
       <span class="info-label">Sessions</span>
@@ -51,7 +34,7 @@
         <i class="fa fa-circle fa-stack-2x fa-inverse"></i>
         <i id="playPauseButton" class="fa fa-play fa-stack-1x"></i>
       </span>
-      <span class="fa-stack fa-md icon" title="Reset">
+      <span class="fa-stack fa-md icon" title="Reset (ne remet pas Focus/Sessions)">
         <i class="fa fa-circle fa-stack-2x fa-inverse"></i>
         <i id="resetClockButton" class="fa fa-refresh fa-stack-1x"></i>
       </span>
@@ -60,38 +43,25 @@
 
   <hr />
   <p>
-    <a class="btn btn-primary" data-toggle="collapse" href="#collapseTime" role="button"
-       aria-expanded="false" aria-controls="collapseTime">Adjust Time</a>
-    <button class="btn btn-primary" type="button" data-toggle="collapse"
-            data-target="#collapseSettings" aria-expanded="false" aria-controls="collapseSettings">
-      Settings
-    </button>
+    <a class="btn btn-primary" data-toggle="collapse" href="#collapseTime">Adjust Time</a>
+    <button class="btn btn-primary" type="button" data-toggle="collapse" data-target="#collapseSettings">Settings</button>
   </p>
 
   <!-- Adjust Time -->
   <div class="collapse" id="collapseTime">
     <div class="card card-body">
       <div class="row time-adjustment-row">
-        <!-- TASK TIME -->
-        <div class="col-xs-4 col-xs-offset-2 task-time-col" style="min-width: 140px">
+        <!-- Task -->
+        <div class="col-xs-4 col-xs-offset-2 task-time-col" style="min-width:140px">
           <p id="taskTime" class="task-time-display"></p>
           <div class="row">
             <p class="task-time-text">Task Time</p>
             <div class="row">
-              <span class="fa-stack fa-md icon">
-                <i class="fa fa-circle fa-stack-2x fa-inverse"></i>
-                <i id="taskTimeUpButton" class="fa fa-plus fa-stack-1x"></i>
-              </span>
-              <span class="fa-stack fa-md icon">
-                <i class="fa fa-circle fa-stack-2x fa-inverse"></i>
-                <i id="taskTimeResetButton" class="fa fa-refresh fa-stack-1x"></i>
-              </span>
-              <span class="fa-stack fa-md icon">
-                <i class="fa fa-circle fa-stack-2x fa-inverse"></i>
-                <i id="taskTimeDownButton" class="fa fa-minus fa-stack-1x"></i>
-              </span>
+              <!-- ordre : - / reset / + -->
+              <span class="fa-stack fa-md icon"><i class="fa fa-circle fa-stack-2x fa-inverse"></i><i id="taskTimeDownButton" class="fa fa-minus fa-stack-1x"></i></span>
+              <span class="fa-stack fa-md icon"><i class="fa fa-circle fa-stack-2x fa-inverse"></i><i id="taskTimeResetButton" class="fa fa-refresh fa-stack-1x"></i></span>
+              <span class="fa-stack fa-md icon"><i class="fa fa-circle fa-stack-2x fa-inverse"></i><i id="taskTimeUpButton" class="fa fa-plus fa-stack-1x"></i></span>
             </div>
-            <!-- PRÉSETS TASK -->
             <div class="row preset-row">
               <button id="taskPreset60"  class="btn btn-preset btn-xs">1h</button>
               <button id="taskPreset120" class="btn btn-preset btn-xs">2h</button>
@@ -99,32 +69,22 @@
           </div>
         </div>
 
-        <!-- BREAK TIME -->
-        <div class="col-xs-4 break-time-col" style="min-width: 140px">
+        <!-- Break -->
+        <div class="col-xs-4 break-time-col" style="min-width:140px">
           <p id="breakTime" class="break-time-display"></p>
+          <div class="row"><p class="break-time-text">Break Time</p></div>
           <div class="row">
-            <p class="break-time-text">Break Time</p>
+            <!-- ordre : - / reset / + -->
+            <span class="fa-stack fa-md icon"><i class="fa fa-circle fa-stack-2x fa-inverse"></i><i id="breakTimeDownButton" class="fa fa-minus fa-stack-1x"></i></span>
+            <span class="fa-stack fa-md icon"><i class="fa fa-circle fa-stack-2x fa-inverse"></i><i id="breakTimeResetButton" class="fa fa-refresh fa-stack-1x"></i></span>
+            <span class="fa-stack fa-md icon"><i class="fa fa-circle fa-stack-2x fa-inverse"></i><i id="breakTimeUpButton" class="fa fa-plus fa-stack-1x"></i></span>
           </div>
-          <div class="row">
-            <span class="fa-stack fa-md icon">
-              <i class="fa fa-circle fa-stack-2x fa-inverse"></i>
-              <i id="breakTimeUpButton" class="fa fa-plus fa-stack-1x"></i>
-            </span>
-            <span class="fa-stack fa-md icon">
-              <i class="fa fa-circle fa-stack-2x fa-inverse"></i>
-              <i id="breakTimeResetButton" class="fa fa-refresh fa-stack-1x"></i>
-            </span>
-            <span class="fa-stack fa-md icon">
-              <i class="fa fa-circle fa-stack-2x fa-inverse"></i>
-              <i id="breakTimeDownButton" class="fa fa-minus fa-stack-1x"></i>
-            </span>
-          </div>
-          <!-- PRÉSETS BREAK -->
           <div class="row preset-row">
             <button id="breakPreset20" class="btn btn-preset btn-xs">20 min</button>
             <button id="breakPreset30" class="btn btn-preset btn-xs">30 min</button>
           </div>
         </div>
+
       </div>
     </div>
   </div>
@@ -134,31 +94,13 @@
     <div class="card card-body">
       <div class="switch checkbox row">
         <div class="col-xs-10 col-xs-offset-1">
-          <p>
-            <label id="continuousModeLabel" class="continuous-mode-label"
-                   title="Ne s’arrête pas à 0 : enchaîne la session suivante."
-                   data-toggle="tooltip" data-placement="auto left" data-trigger="hover">
-              <input id="perpetual" type="checkbox"> Perpetual Pomodoro
-            </label>
-          </p>
-          <p>
-            <label id="notificationsLabel" class="notifications-label"
-                   title="Pas supporté sur certains navigateurs mobiles/IE/Edge legacy."
-                   data-toggle="tooltip" data-placement="auto left" data-trigger="hover">
-              <input id="notify" type="checkbox"> Desktop Notifications
-            </label>
-          </p>
+          <p><label><input id="perpetual" type="checkbox" checked> Perpetual Pomodoro</label></p>
+          <p><label id="notificationsLabel"><input id="notify" type="checkbox"> Desktop Notifications</label></p>
         </div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- JS externes -->
 <script src="https://code.jquery.com/jquery-2.2.1.min.js"></script>
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
-<!-- partial -->
-  <script  src="./script.js"></script>
-
-</body>
-</html>
