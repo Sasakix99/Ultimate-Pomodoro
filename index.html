@@ -1,25 +1,25 @@
 <!DOCTYPE html>
-<html lang="en" >
-<head>
-  <meta charset="UTF-8">
-  <title>Ultimate Pomodoro </title>
-  <link rel='stylesheet' href='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css'>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <title>Ultimate Pomodoro </title>
+    <link rel='stylesheet' href='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css'>
 <link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css'>
 <link rel='stylesheet' href='https://fonts.googleapis.com/css2?family=Nova+Square&amp;family=Varela+Round&amp;display=swap'><link rel="stylesheet" href="./style.css">
 
-</head>
-<body>
-<!-- partial:index.partial.html -->
-<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+  </head>
+    
+  <body>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 
-<!-- CSS critique inline pour survivre à l’embed Notion -->
+<!-- CSS critique inline -->
 <style>
   html,body{height:100%;background:#191919!important;margin:0}
   .container,.row,.collapse,.card,.panel,.panel-body{background:transparent!important}
   .btn.btn-primary{background:#fff!important;border-color:#fff!important;color:#000!important}
   .btn.btn-primary:hover,.btn.btn-primary:focus{filter:brightness(.95);color:#000!important}
-  /* Empêche le disque noir si le CSS externe manque */
   .progress-ring circle{fill:none}
 </style>
 
@@ -28,7 +28,6 @@
   <div class="row">
     <div class="ring-wrap center-block">
       <svg class="progress-ring" viewBox="0 0 180 180" aria-label="Progress">
-        <!-- Attributs SVG critiques en inline -->
         <circle class="ring-bg" cx="90" cy="90" r="80"
                 fill="none" stroke="#ffffff" stroke-opacity="0.14" stroke-width="2"></circle>
         <circle id="ringProgress" class="ring-prog" cx="90" cy="90" r="80"
@@ -41,15 +40,31 @@
     </div>
   </div>
 
-  <!-- Infos -->
-  <div class="row info-row">
+  <!-- Ligne haute -->
+  <div class="row info-row top-row">
+    <div class="col-xs-4 info-left">
+      <span class="info-label">Temps de focus restant</span>
+      <span id="remainingFocusValue" class="remain-value">—</span>
+    </div>
+    <div class="col-xs-4 info-center">
+      <span class="info-label">Fin du focus</span>
+      <span id="etaFinish" class="eta-value">—</span>
+    </div>
+    <div class="col-xs-4 info-right">
+      <span class="info-label">Sessions restantes</span>
+      <span id="sessionsRemaining" class="sessions-remain-value">—</span>
+    </div>
+  </div>
+
+  <!-- Ligne basse -->
+  <div class="row info-row bottom-row">
     <div class="col-xs-6 info-left">
-      <span class="info-label">Sessions</span>
-      <span id="sessionsValue" class="sessions-value">0</span>
+      <span class="info-label">Focus</span>
+      <span id="focusValue" class="focus-value">0s</span>
     </div>
     <div class="col-xs-6 info-right">
-      <span class="info-label">Focus</span>
-      <span id="focusValue" class="focus-value">0m</span>
+      <span class="info-label">Sessions</span>
+      <span id="sessionsValue" class="sessions-value">0</span>
     </div>
   </div>
 
@@ -77,40 +92,22 @@
   <div class="collapse" id="collapseTime">
     <div class="card card-body">
       <div class="row time-adjustment-row">
-        <!-- Task -->
-        <div class="col-xs-4 col-xs-offset-2 task-time-col" style="min-width:140px">
-          <p id="taskTime" class="task-time-display"></p>
-          <div class="row">
-            <p class="task-time-text">Task Time</p>
-            <div class="row">
-              <!-- ordre : - / reset / + -->
-              <span class="fa-stack fa-md icon"><i class="fa fa-circle fa-stack-2x fa-inverse"></i><i id="taskTimeDownButton" class="fa fa-minus fa-stack-1x"></i></span>
-              <span class="fa-stack fa-md icon"><i class="fa fa-circle fa-stack-2x fa-inverse"></i><i id="taskTimeResetButton" class="fa fa-refresh fa-stack-1x"></i></span>
-              <span class="fa-stack fa-md icon"><i class="fa fa-circle fa-stack-2x fa-inverse"></i><i id="taskTimeUpButton" class="fa fa-plus fa-stack-1x"></i></span>
+        <div class="col-xs-10 col-xs-offset-1">
+          <div class="row goals-row">
+            <div class="col-xs-4">
+              <label for="goalTimeInput">Temps de focus (objectif du jour)</label>
+              <input id="goalTimeInput" type="text" class="form-control" value="10h">
             </div>
-            <div class="row preset-row">
-              <button id="taskPreset60"  class="btn btn-preset btn-xs">1h</button>
-              <button id="taskPreset120" class="btn btn-preset btn-xs">2h</button>
+            <div class="col-xs-4">
+              <label for="sessionLengthInput">Durée d’une session</label>
+              <input id="sessionLengthInput" type="text" class="form-control" value="2h">
+            </div>
+            <div class="col-xs-4">
+              <label for="breakLengthInput">Durée d’une pause</label>
+              <input id="breakLengthInput" type="text" class="form-control" value="25m">
             </div>
           </div>
         </div>
-
-        <!-- Break -->
-        <div class="col-xs-4 break-time-col" style="min-width:140px">
-          <p id="breakTime" class="break-time-display"></p>
-          <div class="row"><p class="break-time-text">Break Time</p></div>
-          <div class="row">
-            <!-- ordre : - / reset / + -->
-            <span class="fa-stack fa-md icon"><i class="fa fa-circle fa-stack-2x fa-inverse"></i><i id="breakTimeDownButton" class="fa fa-minus fa-stack-1x"></i></span>
-            <span class="fa-stack fa-md icon"><i class="fa fa-circle fa-stack-2x fa-inverse"></i><i id="breakTimeResetButton" class="fa fa-refresh fa-stack-1x"></i></span>
-            <span class="fa-stack fa-md icon"><i class="fa fa-circle fa-stack-2x fa-inverse"></i><i id="breakTimeUpButton" class="fa fa-plus fa-stack-1x"></i></span>
-          </div>
-          <div class="row preset-row">
-            <button id="breakPreset20" class="btn btn-preset btn-xs">20 min</button>
-            <button id="breakPreset30" class="btn btn-preset btn-xs">30 min</button>
-          </div>
-        </div>
-
       </div>
     </div>
   </div>
@@ -130,8 +127,8 @@
 
 <script src="https://code.jquery.com/jquery-2.2.1.min.js"></script>
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
-<!-- partial -->
-  <script  src="./script.js"></script>
+    <script  src="./script.js"></script>
 
-</body>
+  </body>
+  
 </html>
