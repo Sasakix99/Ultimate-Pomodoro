@@ -22,11 +22,36 @@
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 
-  <!-- Notre CSS -->
-  <link rel="stylesheet" href="style.css">
+  <!-- Notre CSS (CodePen: onglet CSS) -->
 </head>
+
 <body>
   <div class="container text-center timer">
+
+    <!-- ✅ Connexion simple -->
+    <div id="authBox" class="row" style="margin-top:12px;">
+      <div class="col-xs-10 col-xs-offset-1">
+        <div class="panel panel-default" style="background:transparent;border-color:rgba(255,255,255,.15);">
+          <div class="panel-body" style="background:transparent;">
+            <div class="form-group">
+              <label style="color:#bdbdbd;">Nom d’utilisateur</label>
+              <input id="authUsername" class="form-control" placeholder="ex: ata" autocomplete="username" />
+            </div>
+            <div class="form-group">
+              <label style="color:#bdbdbd;">Code</label>
+              <input id="authCode" class="form-control" placeholder="ex: mot secret" autocomplete="current-password" />
+            </div>
+
+            <button id="btnLogin" class="btn btn-primary">Se connecter</button>
+            <button id="btnSignup" class="btn btn-primary">Créer mon profil</button>
+
+            <div id="authStatus" style="margin-top:10px;color:#fff;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- /Connexion -->
+
     <!-- Anneau + minuteur -->
     <div class="row">
       <div class="ring-wrap center-block">
@@ -111,7 +136,7 @@
               </div>
             </div>
 
-            <!-- ✅ Temps complété (minutes) -->
+            <!-- Temps complété (minutes) -->
             <div class="row completed-row">
               <div class="col-xs-12 text-center">
                 <label>Temps complété (minutes)</label>
@@ -135,14 +160,17 @@
         </div>
       </div>
     </div>
+
   </div>
 
   <!-- Dépendances JS -->
   <script src="https://code.jquery.com/jquery-2.2.1.min.js"></script>
   <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
 
-  <!-- Notre JS -->
-  <script src="app.js"></script>
+  <!-- Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Notre JS (CodePen: onglet JS) -->
 </body>
 </html>
     <script  src="./script.js"></script>

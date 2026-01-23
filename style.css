@@ -39,7 +39,7 @@ hr{ background:rgba(255,255,255,.15); height:1px; border:0; }
 /* Adjust Time */
 .goals-row label { color:#bdbdbd; font-weight:400; }
 
-/* ✅ Temps complété (minutes) centré */
+/* Temps complété (minutes) centré */
 .completed-row { margin-top:10px; }
 .completed-row label { display:block; text-align:center; color:#bdbdbd; }
 .completed-minutes { color:#fff; font-weight:700; font-size:16px; text-align:center; }

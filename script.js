@@ -1,3 +1,220 @@
+/* =========================
+   ✅ SUPABASE + AUTH SIMPLE
+   ========================= */
+const SUPABASE_URL = "https://lznudwhylxlrggogkmwy.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_qUjwWqfIiEkmkfg6YObZMQ_RlxwhCHK";
+
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let currentUser = null; // { id, username }
+const LOCAL_USER_KEY = "pomodoro_current_user_v1";
+
+// Hash SHA-256 (pour ne pas stocker le code en clair)
+async function sha256(text){
+  const enc = new TextEncoder().encode(text);
+  const buf = await crypto.subtle.digest("SHA-256", enc);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,"0")).join("");
+}
+
+function setAuthStatus(msg){
+  $("#authStatus").text(msg || "");
+}
+
+function loadSavedUser(){
+  try{
+    const raw = localStorage.getItem(LOCAL_USER_KEY);
+    if(!raw) return null;
+    return JSON.parse(raw);
+  }catch(e){ return null; }
+}
+function saveUserLocal(u){
+  try{ localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(u)); }catch(e){}
+}
+function logoutLocal(){
+  try{ localStorage.removeItem(LOCAL_USER_KEY); }catch(e){}
+  currentUser = null;
+  $("#authBox").show();
+  setAuthStatus("");
+}
+
+// Créer profil (username unique + code)
+async function signup(username, code){
+  username = (username || "").trim();
+  code = (code || "").trim();
+  if(!username || !code) throw new Error("Entre un nom + un code.");
+
+  const pin_hash = await sha256(code);
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .insert([{ username, pin_hash }])
+    .select("id, username")
+    .single();
+
+  if(error) throw error;
+
+  currentUser = data;
+  saveUserLocal(currentUser);
+  $("#authBox").hide();
+  setAuthStatus("");
+  return data;
+}
+
+// Se connecter (vérifie le hash)
+async function login(username, code){
+  username = (username || "").trim();
+  code = (code || "").trim();
+  if(!username || !code) throw new Error("Entre un nom + un code.");
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, username, pin_hash")
+    .eq("username", username)
+    .single();
+
+  if(error) throw error;
+
+  const pin_hash = await sha256(code);
+  if(pin_hash !== data.pin_hash) throw new Error("Code incorrect.");
+
+  currentUser = { id: data.id, username: data.username };
+  saveUserLocal(currentUser);
+  $("#authBox").hide();
+  setAuthStatus("");
+  return currentUser;
+}
+
+/* =========================
+   ✅ TIMER STATE <-> SUPABASE
+   ========================= */
+function buildStateObject(){
+  return {
+    inputs: {
+      goal: $("#goalTimeInput").val(),
+      session: $("#sessionLengthInput").val(),
+      break: $("#breakLengthInput").val(),
+      perpetual: $("#perpetual").is(":checked")
+    },
+
+    totalFocusMinutes,
+    sessionsCompleted,
+
+    currentMode,
+    startSeconds,
+    taskInitialSeconds,
+    taskCountedSeconds,
+
+    targetEndTime,
+    pausedRemainingSeconds,
+
+    pausedFocusedSecSnapshot,
+    pausedRemainingFocusSecSnapshot,
+
+    savedAt: Date.now(),
+    v: 1
+  };
+}
+
+function applyStateObject(st){
+  if(!st || st.v !== 1) return;
+
+  if(st.inputs){
+    if(typeof st.inputs.goal === "string") $("#goalTimeInput").val(st.inputs.goal);
+    if(typeof st.inputs.session === "string") $("#sessionLengthInput").val(st.inputs.session);
+    if(typeof st.inputs.break === "string") $("#breakLengthInput").val(st.inputs.break);
+    if(typeof st.inputs.perpetual === "boolean") $("#perpetual").prop("checked", st.inputs.perpetual);
+  }
+
+  totalFocusMinutes = st.totalFocusMinutes || 0;
+  sessionsCompleted = st.sessionsCompleted || 0;
+
+  currentMode = st.currentMode || "task";
+  startSeconds = (st.startSeconds ?? null);
+  taskInitialSeconds = (st.taskInitialSeconds ?? null);
+  taskCountedSeconds = st.taskCountedSeconds || 0;
+
+  targetEndTime = (st.targetEndTime ?? null);
+  pausedRemainingSeconds = (st.pausedRemainingSeconds ?? null);
+
+  pausedFocusedSecSnapshot = (st.pausedFocusedSecSnapshot ?? null);
+  pausedRemainingFocusSecSnapshot = (st.pausedRemainingFocusSecSnapshot ?? null);
+}
+
+async function loadRemoteState(){
+  if(!currentUser) return null;
+
+  const { data, error } = await supabase
+    .from("timer_state")
+    .select("state_json")
+    .eq("user_id", currentUser.id)
+    .maybeSingle();
+
+  if(error) throw error;
+  return data?.state_json || null;
+}
+
+async function saveRemoteState(){
+  if(!currentUser) return;
+
+  const state = buildStateObject();
+
+  const { error } = await supabase
+    .from("timer_state")
+    .upsert([{ user_id: currentUser.id, state_json: state, updated_at: new Date().toISOString() }]);
+
+  if(error) console.warn("saveRemoteState error:", error.message || error);
+}
+
+let _lastRemoteSave = 0;
+async function saveRemoteStateThrottled(){
+  const now = Date.now();
+  if(now - _lastRemoteSave < 2000) return; // 1 save / 2s
+  _lastRemoteSave = now;
+  await saveRemoteState();
+}
+
+/* =========================
+   ✅ HISTORIQUE (par jour)
+   ========================= */
+function todayISO(){
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth()+1).padStart(2,"0");
+  const dd = String(d.getDate()).padStart(2,"0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+async function upsertTodayHistory(){
+  if(!currentUser) return;
+  const day = todayISO();
+  const focused_seconds = effectiveFocusSeconds();
+  const sessions_completed = sessionsCompleted;
+
+  // ⚠️ Nécessite un unique constraint sur (user_id, day)
+  const { error } = await supabase
+    .from("focus_history")
+    .upsert([{
+      user_id: currentUser.id,
+      day,
+      focused_seconds: Math.floor(focused_seconds),
+      sessions_completed: sessions_completed
+    }], { onConflict: "user_id,day" });
+
+  if(error) console.warn("history upsert error:", error.message || error);
+}
+
+let _lastHistorySave = 0;
+async function upsertTodayHistoryThrottled(){
+  const now = Date.now();
+  if(now - _lastHistorySave < 5000) return; // 1 update / 5s
+  _lastHistorySave = now;
+  await upsertTodayHistory();
+}
+
+/* =========================
+   ✅ TON TIMER (code original)
+   ========================= */
+
 /* ========= Utilitaires ========= */
 function parseDurationToSeconds(str){
   if(!str) return null;
@@ -37,7 +254,7 @@ function formatTimeOfDay(date){
   const mm = date.getMinutes();
   const H = (hh < 10 ? '0' : '') + hh;
   const M = (mm < 10 ? '0' : '') + mm;
-  return `${H}h${M}`; // 24h
+  return `${H}h${M}`;
 }
 /* Units minuscules pour Focus & Restant */
 function formatHMSUnitsLower(sec){
@@ -67,8 +284,8 @@ var pausedRemainingSeconds = null;
 var RADIUS=80, CIRCUMFERENCE=2*Math.PI*RADIUS;
 
 /* === Nouveaux snapshots pour la PAUSE === */
-var pausedFocusedSecSnapshot = null;       // focus effectif au moment de la pause
-var pausedRemainingFocusSecSnapshot = null; // temps de focus restant (objectif) au moment de la pause
+var pausedFocusedSecSnapshot = null;
+var pausedRemainingFocusSecSnapshot = null;
 
 function isPaused(){
   return (targetEndTime==null && pausedRemainingSeconds!=null);
@@ -95,41 +312,6 @@ function showClock(sec){
   if(startSeconds){ updateRing(1-(sec/startSeconds)); }
 }
 
-/* ========= Init ========= */
-$(function(){
-  // Défauts
-  $('#goalTimeInput').val('10h');
-  $('#sessionLengthInput').val('2h');
-  $('#breakLengthInput').val('25m');
-
-  renderSessions();
-  renderFocus();
-  renderCompletedMinutes();    // minutes
-  updateRing(0);
-
-  // Cadran initial
-  var sessionS = parseDurationToSeconds($('#sessionLengthInput').val()) || 2*3600;
-  startSeconds = sessionS;
-  showClock(sessionS);
-
-  $('#perpetual').prop('checked', true);
-  document.addEventListener('visibilitychange', hardUpdateFromNow);
-
-  $('#goalTimeInput, #sessionLengthInput, #breakLengthInput').on('input', function(){
-    if(targetEndTime==null && pausedRemainingSeconds==null && currentMode==='task'){
-      var ss = parseDurationToSeconds($('#sessionLengthInput').val()) || 0;
-      startSeconds = ss>0? ss : 0;
-      showClock(startSeconds);
-      updateRing(0);
-    }
-    updateStatsUI();
-    renderFocus();
-    renderCompletedMinutes();
-  });
-
-  updateStatsUI();
-});
-
 /* ========= Tick ========= */
 function startTick(){ stopTick(); lastShownSeconds=null; tickTimer=setInterval(tick,250); tick(); }
 function stopTick(){ if(tickTimer){ clearInterval(tickTimer); tickTimer=null; } }
@@ -147,22 +329,9 @@ function hardUpdateFromNow(){
   renderFocus();
   renderCompletedMinutes();
 }
-function tick(){
-  if(targetEndTime==null) return;
-  var sec=secondsRemainingNow();
-  if(lastShownSeconds===null||sec!==lastShownSeconds){
-    showClock(sec);
-    lastShownSeconds=sec;
-    if(sec===0) onSegmentEnd();
-    updateStatsUI();
-    renderFocus();
-    renderCompletedMinutes();
-  }
-}
 
 /* ========= Focus effectif ========= */
 function effectiveFocusSeconds(){
-  // Si PAUSE → renvoyer le snapshot figé
   if(isPaused() && pausedFocusedSecSnapshot!=null){
     return pausedFocusedSecSnapshot;
   }
@@ -185,145 +354,13 @@ function renderFocus(){
   var sec = effectiveFocusSeconds();
   document.getElementById('focusValue').textContent = formatHMSUnitsLower(sec);
 }
-/* minutes seules dans Adjust Time */
 function renderCompletedMinutes(){
   var sec = effectiveFocusSeconds();
-  var minutes = Math.floor(sec / 60); // entier en minutes
+  var minutes = Math.floor(sec / 60);
   document.getElementById('completedMinutesValue').textContent = minutes;
 }
 function renderSessions(){
   document.getElementById('sessionsValue').textContent = String(sessionsCompleted);
-}
-
-/* ========= Play / Pause ========= */
-$('#playPauseButton').click(function(){
-  var sessionS = parseDurationToSeconds($('#sessionLengthInput').val()) || 0;
-  var breakS   = parseDurationToSeconds($('#breakLengthInput').val())   || 0;
-
-  if($(this).hasClass('fa-pause')){
-    // === PAUSE ===
-    $(this).attr('class','fa fa-play fa-stack-1x');
-
-    var remaining = secondsRemainingNow();
-    pausedRemainingSeconds = remaining;
-    targetEndTime = null;
-    stopTick();
-
-    // Mettre à jour les minutes/focus validés jusque la pause
-    if(currentMode==='task' && taskInitialSeconds!=null){
-      var elapsed = taskInitialSeconds - remaining - taskCountedSeconds;
-      if(elapsed>0){
-        taskCountedSeconds += elapsed;
-        totalFocusMinutes += Math.round(elapsed/60);
-      }
-    }
-
-    // Créer les snapshots PAUSE (figer les valeurs affichées)
-    pausedFocusedSecSnapshot = effectiveFocusSeconds();
-
-    var goalS = parseDurationToSeconds($('#goalTimeInput').val());
-    if(goalS!=null){
-      pausedRemainingFocusSecSnapshot = Math.max(0, goalS - pausedFocusedSecSnapshot);
-    } else {
-      pausedRemainingFocusSecSnapshot = null;
-    }
-
-    renderFocus();
-    renderCompletedMinutes();
-    updateStatsUI();
-  } else {
-    // === PLAY / RESUME ===
-    $(this).attr('class','fa fa-pause fa-stack-1x');
-
-    // On efface les snapshots pour reprendre en live
-    pausedFocusedSecSnapshot = null;
-    pausedRemainingFocusSecSnapshot = null;
-
-    if(pausedRemainingSeconds != null){
-      if(currentMode==='task'){
-        if(taskInitialSeconds==null){ taskInitialSeconds = sessionS; }
-        startSeconds = taskInitialSeconds;
-      } else {
-        startSeconds = breakS;
-      }
-      showClock(pausedRemainingSeconds);
-      targetEndTime = Date.now() + pausedRemainingSeconds*1000;
-      pausedRemainingSeconds = null;
-      startTick();
-    } else if(targetEndTime==null){
-      if(currentMode==='task'){
-        taskInitialSeconds = sessionS;
-        taskCountedSeconds = 0;
-        startSeconds = taskInitialSeconds;
-      } else {
-        startSeconds = breakS;
-      }
-      targetEndTime = Date.now()+startSeconds*1000;
-      showClock(startSeconds); updateRing(0);
-      startTick();
-    } else {
-      startTick();
-    }
-  }
-});
-
-/* ========= Reset ========= */
-$('#resetClockButton').click(function(){
-  stopTick(); targetEndTime=null; startSeconds=null; pausedRemainingSeconds=null;
-  pausedFocusedSecSnapshot=null; pausedRemainingFocusSecSnapshot=null;
-  $('#playPauseButton').attr('class','fa fa-play fa-stack-1x');
-  currentMode='task'; taskInitialSeconds=null; taskCountedSeconds=0;
-
-  var sessionS = parseDurationToSeconds($('#sessionLengthInput').val()) || 0;
-  startSeconds = sessionS;
-  showClock(sessionS); updateRing(0);
-  updateStatsUI();
-  renderFocus();
-  renderCompletedMinutes();
-});
-
-/* ========= Fin de segment ========= */
-function onSegmentEnd(){
-  if(targetEndTime==null) return;
-  targetEndTime=null; pausedRemainingSeconds=null; stopTick();
-  pausedFocusedSecSnapshot=null; pausedRemainingFocusSecSnapshot=null;
-
-  if(currentMode==='task'){
-    var rest=Math.max(0, taskInitialSeconds-taskCountedSeconds);
-    if(rest>0){
-      totalFocusMinutes+=Math.round(rest/60);
-      taskCountedSeconds=taskInitialSeconds;
-    }
-    play(dingTaskEnd);
-    sessionsCompleted += 1;
-    renderSessions();
-    startNext('break');
-  } else {
-    play(dingBreakEnd);
-    startNext('task');
-  }
-}
-
-/* ========= Prochain segment ========= */
-function startNext(mode){
-  currentMode=mode;
-  var sessionS = parseDurationToSeconds($('#sessionLengthInput').val()) || 0;
-  var breakS   = parseDurationToSeconds($('#breakLengthInput').val())   || 0;
-
-  if(mode==='task'){ taskInitialSeconds=sessionS; taskCountedSeconds=0; startSeconds=taskInitialSeconds; }
-  else { startSeconds=breakS; }
-
-  showClock(startSeconds); updateRing(0);
-
-  if($('#perpetual').is(':checked')){
-    $('#playPauseButton').attr('class','fa fa-pause fa-stack-1x');
-    targetEndTime=Date.now()+startSeconds*1000; startTick();
-  } else {
-    $('#playPauseButton').attr('class','fa fa-play fa-stack-1x');
-  }
-  updateStatsUI();
-  renderFocus();
-  renderCompletedMinutes();
 }
 
 /* ========= Statistiques ========= */
@@ -332,7 +369,6 @@ function updateStatsUI(){
   var sessionS  = parseDurationToSeconds($('#sessionLengthInput').val()) || 0;
   var breakS    = parseDurationToSeconds($('#breakLengthInput').val())   || 0;
 
-  // Focus (effectif) & Restant : si PAUSE -> utiliser le snapshot figé
   var focusedSec = isPaused() && pausedFocusedSecSnapshot!=null
       ? pausedFocusedSecSnapshot
       : effectiveFocusSeconds();
@@ -363,3 +399,308 @@ function updateStatsUI(){
     (sessionsRemaining!=null) ? sessionsRemaining : '—';
   document.getElementById('etaFinish').textContent = etaText;
 }
+
+/* ========= Fin de segment ========= */
+function onSegmentEnd(){
+  if(targetEndTime==null) return;
+  targetEndTime=null; pausedRemainingSeconds=null; stopTick();
+  pausedFocusedSecSnapshot=null; pausedRemainingFocusSecSnapshot=null;
+
+  if(currentMode==='task'){
+    var rest=Math.max(0, taskInitialSeconds-taskCountedSeconds);
+    if(rest>0){
+      totalFocusMinutes+=Math.round(rest/60);
+      taskCountedSeconds=taskInitialSeconds;
+    }
+    play(dingTaskEnd);
+    sessionsCompleted += 1;
+    renderSessions();
+    startNext('break');
+  } else {
+    play(dingBreakEnd);
+    startNext('task');
+  }
+
+  // save + history
+  if(currentUser){ saveRemoteStateThrottled(); upsertTodayHistoryThrottled(); }
+}
+
+/* ========= Prochain segment ========= */
+function startNext(mode){
+  currentMode=mode;
+  var sessionS = parseDurationToSeconds($('#sessionLengthInput').val()) || 0;
+  var breakS   = parseDurationToSeconds($('#breakLengthInput').val())   || 0;
+
+  if(mode==='task'){ taskInitialSeconds=sessionS; taskCountedSeconds=0; startSeconds=taskInitialSeconds; }
+  else { startSeconds=breakS; }
+
+  showClock(startSeconds); updateRing(0);
+
+  if($('#perpetual').is(':checked')){
+    $('#playPauseButton').attr('class','fa fa-pause fa-stack-1x');
+    targetEndTime=Date.now()+startSeconds*1000; startTick();
+  } else {
+    $('#playPauseButton').attr('class','fa fa-play fa-stack-1x');
+  }
+  updateStatsUI();
+  renderFocus();
+  renderCompletedMinutes();
+
+  if(currentUser){ saveRemoteStateThrottled(); upsertTodayHistoryThrottled(); }
+}
+
+/* ========= tick ========= */
+function tick(){
+  if(targetEndTime==null) return;
+  var sec=secondsRemainingNow();
+  if(lastShownSeconds===null||sec!==lastShownSeconds){
+    showClock(sec);
+    lastShownSeconds=sec;
+    if(sec===0) onSegmentEnd();
+    updateStatsUI();
+    renderFocus();
+    renderCompletedMinutes();
+
+    if(currentUser){ saveRemoteStateThrottled(); upsertTodayHistoryThrottled(); }
+  }
+}
+
+/* =========================
+   ✅ RESTORE après login
+   ========================= */
+async function afterLoginRestore(){
+  const remote = await loadRemoteState();
+
+  if(remote){
+    applyStateObject(remote);
+    renderSessions();
+
+    // timer en cours ?
+    if(targetEndTime != null){
+      const sec = secondsRemainingNow();
+      if(sec <= 0){
+        showClock(0);
+        onSegmentEnd();
+      }else{
+        if(!startSeconds){
+          const sessionS = parseDurationToSeconds($('#sessionLengthInput').val()) || 0;
+          const breakS   = parseDurationToSeconds($('#breakLengthInput').val()) || 0;
+          startSeconds = (currentMode === "task") ? (taskInitialSeconds || sessionS) : breakS;
+        }
+        showClock(sec);
+        $('#playPauseButton').attr('class','fa fa-pause fa-stack-1x');
+        startTick();
+      }
+    } else if(pausedRemainingSeconds != null){
+      // pause
+      if(!startSeconds){
+        const sessionS = parseDurationToSeconds($('#sessionLengthInput').val()) || 0;
+        const breakS   = parseDurationToSeconds($('#breakLengthInput').val()) || 0;
+        startSeconds = (currentMode === "task") ? (taskInitialSeconds || sessionS) : breakS;
+      }
+      showClock(pausedRemainingSeconds);
+      $('#playPauseButton').attr('class','fa fa-play fa-stack-1x');
+    } else {
+      // idle
+      const sessionS = parseDurationToSeconds($('#sessionLengthInput').val()) || 2*3600;
+      startSeconds = sessionS;
+      showClock(sessionS);
+      updateRing(0);
+      $('#playPauseButton').attr('class','fa fa-play fa-stack-1x');
+    }
+
+    renderFocus();
+    renderCompletedMinutes();
+    updateStatsUI();
+
+  } else {
+    // pas d’état en DB encore
+    await saveRemoteState();
+    await upsertTodayHistory();
+  }
+}
+
+/* =========================
+   ✅ INIT + HANDLERS (jQuery)
+   ========================= */
+$(function(){
+  // Défauts
+  $('#goalTimeInput').val('10h');
+  $('#sessionLengthInput').val('2h');
+  $('#breakLengthInput').val('25m');
+  $('#perpetual').prop('checked', true);
+
+  renderSessions();
+  renderFocus();
+  renderCompletedMinutes();
+  updateRing(0);
+
+  // cadran initial
+  var sessionS0 = parseDurationToSeconds($('#sessionLengthInput').val()) || 2*3600;
+  startSeconds = sessionS0;
+  showClock(sessionS0);
+
+  document.addEventListener('visibilitychange', () => {
+    hardUpdateFromNow();
+    if(currentUser){ saveRemoteStateThrottled(); upsertTodayHistoryThrottled(); }
+  });
+
+  // Update UI quand inputs changent
+  $('#goalTimeInput, #sessionLengthInput, #breakLengthInput').on('input', function(){
+    if(targetEndTime==null && pausedRemainingSeconds==null && currentMode==='task'){
+      var ss = parseDurationToSeconds($('#sessionLengthInput').val()) || 0;
+      startSeconds = ss>0? ss : 0;
+      showClock(startSeconds);
+      updateRing(0);
+    }
+    updateStatsUI();
+    renderFocus();
+    renderCompletedMinutes();
+
+    if(currentUser){ saveRemoteStateThrottled(); upsertTodayHistoryThrottled(); }
+  });
+
+  // Auth buttons
+  $(document).on("click", "#btnSignup", async function(){
+    try{
+      setAuthStatus("Création du profil...");
+      await signup($("#authUsername").val(), $("#authCode").val());
+      setAuthStatus("Profil créé. Chargement...");
+      await afterLoginRestore();
+      setAuthStatus("");
+    }catch(e){
+      setAuthStatus("Erreur: " + (e.message || e));
+    }
+  });
+
+  $(document).on("click", "#btnLogin", async function(){
+    try{
+      setAuthStatus("Connexion...");
+      await login($("#authUsername").val(), $("#authCode").val());
+      setAuthStatus("Connecté. Chargement...");
+      await afterLoginRestore();
+      setAuthStatus("");
+    }catch(e){
+      setAuthStatus("Erreur: " + (e.message || e));
+    }
+  });
+
+  // Auto-login via localStorage
+  (async function(){
+    const u = loadSavedUser();
+    if(u && u.id && u.username){
+      currentUser = u;
+      $("#authBox").hide();
+      try{
+        await afterLoginRestore();
+      }catch(e){
+        console.warn(e);
+        logoutLocal();
+      }
+    } else {
+      $("#authBox").show();
+    }
+  })();
+
+  // Autosave (toutes les 1s, throttle inside)
+  setInterval(async () => {
+    if(!currentUser) return;
+    await saveRemoteStateThrottled();
+    await upsertTodayHistoryThrottled();
+  }, 1000);
+
+  // Play/Pause
+  $(document).on("click", "#playPauseButton", function(){
+    var sessionS = parseDurationToSeconds($('#sessionLengthInput').val()) || 0;
+    var breakS   = parseDurationToSeconds($('#breakLengthInput').val())   || 0;
+
+    if($(this).hasClass('fa-pause')){
+      // === PAUSE ===
+      $(this).attr('class','fa fa-play fa-stack-1x');
+
+      var remaining = secondsRemainingNow();
+      pausedRemainingSeconds = remaining;
+      targetEndTime = null;
+      stopTick();
+
+      if(currentMode==='task' && taskInitialSeconds!=null){
+        var elapsed = taskInitialSeconds - remaining - taskCountedSeconds;
+        if(elapsed>0){
+          taskCountedSeconds += elapsed;
+          totalFocusMinutes += Math.round(elapsed/60);
+        }
+      }
+
+      pausedFocusedSecSnapshot = effectiveFocusSeconds();
+
+      var goalS = parseDurationToSeconds($('#goalTimeInput').val());
+      if(goalS!=null){
+        pausedRemainingFocusSecSnapshot = Math.max(0, goalS - pausedFocusedSecSnapshot);
+      } else {
+        pausedRemainingFocusSecSnapshot = null;
+      }
+
+      renderFocus();
+      renderCompletedMinutes();
+      updateStatsUI();
+
+      if(currentUser){ saveRemoteStateThrottled(); upsertTodayHistoryThrottled(); }
+
+    } else {
+      // === PLAY / RESUME ===
+      $(this).attr('class','fa fa-pause fa-stack-1x');
+
+      pausedFocusedSecSnapshot = null;
+      pausedRemainingFocusSecSnapshot = null;
+
+      if(pausedRemainingSeconds != null){
+        if(currentMode==='task'){
+          if(taskInitialSeconds==null){ taskInitialSeconds = sessionS; }
+          startSeconds = taskInitialSeconds;
+        } else {
+          startSeconds = breakS;
+        }
+        showClock(pausedRemainingSeconds);
+        targetEndTime = Date.now() + pausedRemainingSeconds*1000;
+        pausedRemainingSeconds = null;
+        startTick();
+
+      } else if(targetEndTime==null){
+        if(currentMode==='task'){
+          taskInitialSeconds = sessionS;
+          taskCountedSeconds = 0;
+          startSeconds = taskInitialSeconds;
+        } else {
+          startSeconds = breakS;
+        }
+        targetEndTime = Date.now()+startSeconds*1000;
+        showClock(startSeconds); updateRing(0);
+        startTick();
+
+      } else {
+        startTick();
+      }
+
+      if(currentUser){ saveRemoteStateThrottled(); upsertTodayHistoryThrottled(); }
+    }
+  });
+
+  // Reset
+  $(document).on("click", "#resetClockButton", function(){
+    stopTick(); targetEndTime=null; startSeconds=null; pausedRemainingSeconds=null;
+    pausedFocusedSecSnapshot=null; pausedRemainingFocusSecSnapshot=null;
+    $('#playPauseButton').attr('class','fa fa-play fa-stack-1x');
+    currentMode='task'; taskInitialSeconds=null; taskCountedSeconds=0;
+
+    var sessionS = parseDurationToSeconds($('#sessionLengthInput').val()) || 0;
+    startSeconds = sessionS;
+    showClock(sessionS); updateRing(0);
+    updateStatsUI();
+    renderFocus();
+    renderCompletedMinutes();
+
+    if(currentUser){ saveRemoteStateThrottled(); upsertTodayHistoryThrottled(); }
+  });
+
+  updateStatsUI();
+});
