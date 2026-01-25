@@ -7,39 +7,428 @@ html, body { height:100%; background:#191919 !important; margin:0; }
 
 .container { min-width:220px; max-width:520px; }
 
-/* Anneau */
-.ring-wrap { width:440px; height:440px; margin:18px auto 10px; position:relative; }
-.progress-ring { position:absolute; inset:0; width:100%; height:100%; display:block; z-index:1; }
-.progress-ring circle { fill:none; }
-.ring-center { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; z-index:2; }
-.clock-time  { font-family:'Nova Square', sans-serif; color:#fff; line-height:1;
-               font-size: clamp(52px, 9vw, 76px); letter-spacing:.5px; text-shadow:0 1px 0 rgba(0,0,0,.35); }
+/* ✅ cache les anciens blocs texte (on garde les IDs pour le système) */
+.legacy-hidden{ display:none !important; }
 
-/* Infos */
-.timer p { color:#fff; font-family:'Varela Round', sans-serif; }
-.info-row{ margin-top:8px; }
-.info-left{text-align:left;} .info-right{text-align:right;} .info-center{text-align:center;}
-.info-label{ color:#bdbdbd; margin-right:6px; }
+/* Onglets */
+.top-tabs-wrap{
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 50;
+  text-align: left;
+}
+.top-tabs{ display:flex; gap:8px; flex-wrap:wrap; }
+.tab-btn{
+  background: rgba(255,255,255,.10);
+  border: 1px solid rgba(255,255,255,.12);
+  color:#fff;
+  padding:6px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+}
+.tab-btn.active{ background: rgba(255,255,255,.18); }
 
-/* Couleurs */
-.sessions-value{ color:#fff; font-weight:700; }
-.focus-value{ color:#fff; font-weight:600; }
-.remain-value, .sessions-remain-value, .eta-value { color:#fff; font-weight:600; }
+.top-panel{
+  margin-top:8px;
+  width: 240px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 12px;
+  background: rgba(0,0,0,.25);
+}
+.top-panel-inner{ padding:10px; }
 
-/* Boutons */
-.play-reset-row{ font-size:1.5em; padding:1em; }
-.icon{ cursor:pointer; } .icon:active{ transform:scale(.94); }
+.auth-panel{ border-color: rgba(255,255,255,.15) !important; }
+.auth-body{ background:transparent !important; }
+.muted{ color:#bdbdbd; font-weight:400; }
+.auth-status{ margin-top:10px; color:#fff; word-break: break-word; }
+.account-username{ color:#fff; font-weight:700; margin-top:2px; }
+.top-actions{ display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+
+.history-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+}
+.history-wrap{ margin-top:8px; max-height: 240px; overflow:auto; }
+.history-table{ width:100%; border-collapse: collapse; }
+.history-table th, .history-table td{
+  padding:6px 4px;
+  border-bottom:1px solid rgba(255,255,255,.10);
+  font-size:12px;
+  color:#fff;
+}
+.history-table th{ color:#bdbdbd; font-weight:600; }
+
+.history-range, .ranking-range{
+  width:auto;
+  height:22px;
+  padding:2px 6px;
+  font-size:12px;
+  border-radius:10px;
+  background: rgba(0,0,0,.55);
+  border: 1px solid rgba(255,255,255,.18);
+  color:#fff;
+}
+.history-range option, .ranking-range option{
+  background:#191919;
+  color:#fff;
+}
 
 /* Boutons principaux blancs */
 .btn.btn-primary{ background:#fff !important; border-color:#fff !important; color:#000 !important; }
 .btn.btn-primary:hover, .btn.btn-primary:focus{ filter:brightness(.95); color:#000 !important; }
 
-hr{ background:rgba(255,255,255,.15); height:1px; border:0; }
+/* ✅ STAGE anneaux */
+.rings-stage{
+  position:relative;
+  width: min(92vw, 520px);
 
-/* Adjust Time */
+  /* (tu peux encore augmenter si tu veux descendre tout le système) */
+  margin: 210px auto 0;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  /* tailles */
+  --main-size: min(72vmin, 460px);
+
+  /* ✅ mini rings un peu plus grands (pour “Sessions restantes”) */
+  --mini-size: min(26vmin, 172px);
+
+  /* rapprochement des 4 anneaux */
+  --gap-base: -18px;
+  --gap: var(--gap-base);
+
+  /* orbite */
+  --orbit: calc((var(--main-size) / 2) + (var(--mini-size) / 2) + var(--gap));
+
+  /* ✅ espace entre boutons et anneau “Fin du focus” */
+  --eta-gap: 26px;
+}
+
+/* Anneau central */
+.ring-wrap{
+  width: var(--main-size);
+  height: var(--main-size);
+  position:relative;
+}
+.progress-ring{ position:absolute; inset:0; width:100%; height:100%; display:block; z-index:1; }
+.progress-ring circle { fill:none; }
+.ring-center{
+  position:absolute; inset:0;
+  display:flex; align-items:center; justify-content:center;
+  z-index:2;
+}
+.ring-center-inner{
+  width: 78%;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap: 10px;
+}
+.clock-time{
+  font-family:'Nova Square', sans-serif;
+  color:#fff;
+  line-height:1;
+  font-size: clamp(52px, 9vw, 76px);
+  letter-spacing:.5px;
+  text-shadow:0 1px 0 rgba(0,0,0,.35);
+}
+
+/* Quotes */
+.quote-wrap{
+  width:100%;
+  text-align:center;
+  margin-top: 2px;
+}
+.quote-text{
+  font-family:'Varela Round', sans-serif;
+  color:#fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+.quote-author{
+  font-family:'Varela Round', sans-serif;
+  color:#bdbdbd;
+  font-size: 11px;
+  font-weight: 400;
+  margin-top: 4px;
+}
+
+/* ✅ Mini rings */
+.mini-ring{
+  position:absolute;
+  width: var(--mini-size);
+  height: var(--mini-size);
+  transform: translate(-50%, -50%);
+  z-index:3;
+}
+.mini-svg{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+}
+.mini-bg{
+  fill:none;
+  stroke: rgba(255,255,255,0.14);
+  stroke-width: 3;
+}
+.mini-prog{
+  fill:none;
+  stroke: #22C55E;
+  stroke-width: 3;
+  stroke-linecap: round;
+
+  /* ✅ IMPORTANT: au chargement -> vide (le JS mettra la vraie circonférence) */
+  stroke-dasharray: 9999;
+  stroke-dashoffset: 9999;
+}
+
+/* ✅ contenu: plus d’air pour éviter de toucher les bords */
+.mini-center{
+  position:absolute;
+  inset:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  padding: 16px;
+}
+.mini-label{
+  font-family:'Varela Round', sans-serif;
+  color:#bdbdbd;
+  font-size: 11px;
+  line-height: 1.15;
+  max-width: 92%;
+  white-space: normal;
+}
+.mini-value{
+  font-family:'Varela Round', sans-serif;
+  color:#fff;
+  font-weight:700;
+  font-size: 14px;
+  line-height: 1.2;
+  margin-top: 4px;
+}
+.mini-pct{
+  font-family:'Varela Round', sans-serif;
+  color:#bdbdbd;
+  font-size: 11px;
+  line-height: 1.2;
+  margin-top: 4px;
+}
+
+/* Positions (symétriques) */
+.pos-tl{ left: calc(50% - var(--orbit)); top: calc(50% - var(--orbit)); }
+.pos-tr{ left: calc(50% + var(--orbit)); top: calc(50% - var(--orbit)); }
+.pos-bl{ left: calc(50% - var(--orbit)); top: calc(50% + var(--orbit)); }
+.pos-br{ left: calc(50% + var(--orbit)); top: calc(50% + var(--orbit)); }
+
+/* ✅ anneau du bas : centré strict + descendu pour laisser de l’espace avec les boutons */
+.pos-bm{
+  left: 50% !important;
+  top: calc(50% + var(--orbit) + (var(--mini-size) / 2) + var(--eta-gap));
+}
+
+/* anneau fin (bas) */
+.mini-eta{
+  width: calc(var(--mini-size) * 0.92);
+  height: calc(var(--mini-size) * 0.92);
+}
+
+/* ✅ Mode minimaliste : cache les 5 anneaux */
+.minimal-mode .mini-ring{
+  display:none !important;
+}
+
+/* ✅ CENTRAGE ALIGNÉ : on neutralise les marges négatives Bootstrap + on centre la row des boutons */
+#appMain > .row{
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  display:flex;
+  justify-content:center;
+}
+
+/* Boutons : centre parfait */
+.play-reset-row{
+  font-size:1.5em;
+  padding: 0;
+  margin-top: 16px;
+
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  gap: 14px;
+}
+.icon{ cursor:pointer; }
+.icon:active{ transform:scale(.94); }
+
+/* Goals labels (Settings) */
 .goals-row label { color:#bdbdbd; font-weight:400; }
-
-/* Temps complété (minutes) centré */
-.completed-row { margin-top:10px; }
 .completed-row label { display:block; text-align:center; color:#bdbdbd; }
 .completed-minutes { color:#fff; font-weight:700; font-size:16px; text-align:center; }
+
+/* STATS panel */
+.performance-panel{
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(1160px, calc(100vw - 24px));
+  z-index: 80;
+
+  background: #101010;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 14px;
+  box-shadow: 0 18px 60px rgba(0,0,0,.65);
+}
+
+.perf-wrap{ margin-top:8px; height: min(86vh, 760px); overflow: auto; }
+.perf-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.perf-head-right{ display:flex; align-items:center; gap:8px; }
+.perf-tabs{ display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+.perf-tab{
+  background: rgba(255,255,255,.10);
+  border: 1px solid rgba(255,255,255,.12);
+  color:#fff;
+  padding:6px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  cursor:pointer;
+}
+.perf-tab.active{ background: rgba(255,255,255,.18); }
+.perf-select{
+  width:auto;
+  height:28px;
+  padding:2px 8px;
+  font-size:12px;
+  border-radius:12px;
+  background: rgba(0,0,0,.55);
+  border: 1px solid rgba(255,255,255,.18);
+  color:#fff;
+}
+.perf-select option{ background:#191919; color:#fff; }
+
+.perf-chart{
+  margin-top:10px;
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 14px;
+  background: rgba(0,0,0,.18);
+  padding:10px;
+}
+.perf-canvas{ width:100%; height:240px; display:block; }
+
+.perf-stats{
+  margin-top:10px;
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:10px;
+}
+.perf-card{
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 14px;
+  background: rgba(0,0,0,.18);
+  padding:10px;
+}
+.perf-title-row{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.perf-title{ color:#bdbdbd; font-size:12px; }
+.perf-value{ color:#fff; font-weight:700; margin-top:6px; font-size:14px; }
+.delta-badge{
+  display:inline-block;
+  min-width:44px;
+  text-align:center;
+  padding:2px 8px;
+  border-radius: 999px;
+  font-size:11px;
+  font-weight:700;
+  border: 1px solid rgba(255,255,255,.12);
+  color:#fff;
+}
+.delta-pos{ background: rgba(34,197,94,.18); border-color: rgba(34,197,94,.35); color:#22C55E; }
+.delta-neg{ background: rgba(239,68,68,.18); border-color: rgba(239,68,68,.35); color:#EF4444; }
+.perf-wide{ grid-column: 1 / -1; }
+
+/* Calendar */
+.perf-calendar{
+  margin-top:10px;
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 14px;
+  background: rgba(0,0,0,.18);
+  padding:10px;
+}
+.cal-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.cal-title{ display:flex; align-items:baseline; gap:10px; }
+.cal-month{ color:#fff; font-weight:700; font-size:12px; }
+.cal-actions{ display:flex; gap:8px; }
+.cal-help{ margin-top:8px; font-size:11px; }
+
+.cal-grid{ margin-top:10px; display:grid; grid-template-columns: repeat(7, 1fr); gap:6px; }
+.cal-dow{ color:#bdbdbd; font-size:11px; text-align:center; }
+.cal-cell{
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 10px;
+  padding:6px 6px;
+  min-height:38px;
+  background: rgba(255,255,255,.03);
+  position:relative;
+  color:#fff;
+  font-size:12px;
+  cursor:pointer;
+}
+.cal-cell.cal-muted{ opacity:.35; cursor:default; }
+.cal-cell.cal-selected{ outline: 2px solid rgba(255,255,255,.35); }
+.cal-cell.cal-inrange{ background: rgba(255,255,255,.06); }
+.cal-daynum{ font-weight:700; font-size:12px; }
+.cal-dot{
+  width:8px; height:8px; border-radius:999px;
+  display:inline-block; margin-left:6px; vertical-align:middle;
+  border: 1px solid rgba(255,255,255,.14);
+}
+.cal-l0{ background: rgba(255,255,255,.10); }
+.cal-l1{ background: rgba(34,197,94,.20); border-color: rgba(34,197,94,.35); }
+.cal-l2{ background: rgba(34,197,94,.38); border-color: rgba(34,197,94,.45); }
+.cal-l3{ background: rgba(34,197,94,.58); border-color: rgba(34,197,94,.55); }
+.cal-l4{ background: rgba(34,197,94,.82); border-color: rgba(34,197,94,.65); }
+
+.cal-periods{ margin-top:10px; border-top:1px solid rgba(255,255,255,.10); padding-top:10px; }
+.cal-periods-title{ font-size:11px; margin-bottom:6px; }
+.cal-periods-list{ display:flex; flex-wrap:wrap; gap:6px; }
+.period-pill{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:6px 10px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.06);
+  color:#fff;
+  font-size:11px;
+  cursor:pointer;
+}
+.period-pill.active{ background: rgba(255,255,255,.14); border-color: rgba(255,255,255,.22); }
+.period-pill .pill-x{ opacity:.85; cursor:pointer; font-weight:700; }
+
+.cal-compare{ margin-top:10px; max-height: 180px; overflow:auto; border-top:1px solid rgba(255,255,255,.10); padding-top:10px; }
+
+/* Responsive */
+@media (max-width:520px){
+  .rings-stage{
+    width: min(96vw, 520px);
+
+    --main-size: min(80vmin, 420px);
+    --mini-size: min(28vmin, 168px);
+    --gap-base: -14px;
+
+    margin: 230px auto 0;
+    --eta-gap: 26px;
+  }
+  .perf-stats{ grid-template-columns: 1fr; }
+  .performance-panel{ width: min(520px, calc(100vw - 20px)); }
+}

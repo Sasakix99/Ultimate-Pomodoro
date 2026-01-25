@@ -4,9 +4,8 @@
   <head>
     <meta charset="UTF-8">
     <title>Ultimate Pomodoro </title>
-    <link rel='stylesheet' href='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css'>
-<link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css'>
-<link rel='stylesheet' href='https://fonts.googleapis.com/css2?family=Nova+Square&amp;family=Varela+Round&amp;display=swap'><link rel="stylesheet" href="./style.css">
+    <link rel='stylesheet' href='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.csshttps://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css'>
+<link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css'><link rel="stylesheet" href="./style.css">
 
   </head>
     
@@ -22,158 +21,474 @@
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 
-  <!-- Notre CSS (CodePen: onglet CSS) -->
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Nova+Square&family=Varela+Round&display=swap" rel="stylesheet">
+
+  <!-- Notre CSS -->
+  <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
   <div class="container text-center timer">
 
-    <!-- ✅ Connexion simple -->
-    <div id="authBox" class="row" style="margin-top:12px;">
-      <div class="col-xs-10 col-xs-offset-1">
-        <div class="panel panel-default" style="background:transparent;border-color:rgba(255,255,255,.15);">
-          <div class="panel-body" style="background:transparent;">
-            <div class="form-group">
-              <label style="color:#bdbdbd;">Nom d’utilisateur</label>
-              <input id="authUsername" class="form-control" placeholder="ex: ata" autocomplete="username" />
-            </div>
-            <div class="form-group">
-              <label style="color:#bdbdbd;">Code</label>
-              <input id="authCode" class="form-control" placeholder="ex: mot secret" autocomplete="current-password" />
-            </div>
+    <!-- BARRE EN HAUT (gauche) : onglets -->
+    <div id="topTabs" class="top-tabs-wrap" style="display:none;">
+      <div class="top-tabs">
+        <button id="tabAccount" class="tab-btn">Compte</button>
+        <button id="tabSettingsTop" class="tab-btn">Settings</button>
+        <button id="tabRanking" class="tab-btn">🏆 Classement</button>
+        <button id="tabHistory" class="tab-btn">Historique</button>
+        <button id="tabPerformance" class="tab-btn">Stats</button>
+      </div>
 
-            <button id="btnLogin" class="btn btn-primary">Se connecter</button>
-            <button id="btnSignup" class="btn btn-primary">Créer mon profil</button>
-
-            <div id="authStatus" style="margin-top:10px;color:#fff;"></div>
+      <!-- panneau Compte -->
+      <div id="panelAccount" class="top-panel" style="display:none;">
+        <div class="top-panel-inner">
+          <div class="muted">Connecté en tant que</div>
+          <div id="accountUsername" class="account-username">—</div>
+          <div class="top-actions">
+            <button id="btnResetDay" class="btn btn-primary btn-xs" type="button">Réinitialisation de la journée</button>
+            <button id="btnSwitchAccount" class="btn btn-primary btn-xs" type="button">Changer de compte</button>
+            <button id="btnLogout" class="btn btn-primary btn-xs" type="button">Déconnexion</button>
           </div>
         </div>
       </div>
-    </div>
-    <!-- /Connexion -->
 
-    <!-- Anneau + minuteur -->
-    <div class="row">
-      <div class="ring-wrap center-block">
-        <svg class="progress-ring" viewBox="0 0 180 180" aria-label="Progress">
-          <circle class="ring-bg" cx="90" cy="90" r="80"
-                  fill="none" stroke="#ffffff" stroke-opacity="0.14" stroke-width="2"></circle>
-          <circle id="ringProgress" class="ring-prog" cx="90" cy="90" r="80"
-                  fill="none" stroke="#22C55E" stroke-width="2" stroke-linecap="round"
-                  transform="rotate(-90 90 90)"></circle>
-        </svg>
-        <div class="ring-center">
-          <div id="clockTime" class="clock-time"></div>
-        </div>
-      </div>
-    </div>
+      <!-- panneau Settings -->
+      <div id="panelSettingsTop" class="top-panel" style="display:none;">
+        <div class="top-panel-inner">
 
-    <!-- Ligne haute -->
-    <div class="row info-row top-row">
-      <div class="col-xs-4 info-left">
-        <span class="info-label">Temps de focus restant</span>
-        <span id="remainingFocusValue" class="remain-value">—</span>
-      </div>
-      <div class="col-xs-4 info-center">
-        <span class="info-label">Fin du focus</span>
-        <span id="etaFinish" class="eta-value">—</span>
-      </div>
-      <div class="col-xs-4 info-right">
-        <span class="info-label">Sessions restantes</span>
-        <span id="sessionsRemaining" class="sessions-remain-value">—</span>
-      </div>
-    </div>
-
-    <!-- Ligne basse -->
-    <div class="row info-row bottom-row">
-      <div class="col-xs-6 info-left">
-        <span class="info-label">Focus</span>
-        <span id="focusValue" class="focus-value">0s</span>
-      </div>
-      <div class="col-xs-6 info-right">
-        <span class="info-label">Sessions</span>
-        <span id="sessionsValue" class="sessions-value">0</span>
-      </div>
-    </div>
-
-    <!-- Boutons -->
-    <div class="row">
-      <div class="play-reset-row">
-        <span class="fa-stack fa-md icon" title="Play / Pause">
-          <i class="fa fa-circle fa-stack-2x fa-inverse"></i>
-          <i id="playPauseButton" class="fa fa-play fa-stack-1x"></i>
-        </span>
-        <span class="fa-stack fa-md icon" title="Reset (ne remet pas Focus/Sessions)">
-          <i class="fa fa-circle fa-stack-2x fa-inverse"></i>
-          <i id="resetClockButton" class="fa fa-refresh fa-stack-1x"></i>
-        </span>
-      </div>
-    </div>
-
-    <hr />
-    <p>
-      <a class="btn btn-primary" data-toggle="collapse" href="#collapseTime">Adjust Time</a>
-      <button class="btn btn-primary" type="button" data-toggle="collapse" data-target="#collapseSettings">Settings</button>
-    </p>
-
-    <!-- Adjust Time -->
-    <div class="collapse" id="collapseTime">
-      <div class="card card-body">
-        <div class="row time-adjustment-row">
-          <div class="col-xs-10 col-xs-offset-1">
-            <div class="row goals-row">
-              <div class="col-xs-4">
-                <label for="goalTimeInput">Temps de focus (objectif du jour)</label>
-                <input id="goalTimeInput" type="text" class="form-control" value="10h">
-              </div>
-              <div class="col-xs-4">
-                <label for="sessionLengthInput">Durée d’une session</label>
-                <input id="sessionLengthInput" type="text" class="form-control" value="2h">
-              </div>
-              <div class="col-xs-4">
-                <label for="breakLengthInput">Durée d’une pause</label>
-                <input id="breakLengthInput" type="text" class="form-control" value="25m">
-              </div>
+          <div class="muted" style="margin-bottom:6px;">Adjust Time</div>
+          <div class="row goals-row" style="margin:0;">
+            <div class="col-xs-12" style="padding:0;">
+              <label for="goalTimeInput">Temps de focus (objectif du jour)</label>
+              <input id="goalTimeInput" type="text" class="form-control" value="10h">
             </div>
-
-            <!-- Temps complété (minutes) -->
-            <div class="row completed-row">
-              <div class="col-xs-12 text-center">
-                <label>Temps complété (minutes)</label>
-                <div id="completedMinutesValue" class="completed-minutes">0</div>
-              </div>
+            <div class="col-xs-12" style="padding:0; margin-top:8px;">
+              <label for="sessionLengthInput">Durée d’une session</label>
+              <input id="sessionLengthInput" type="text" class="form-control" value="2h">
             </div>
-            <!-- /Temps complété -->
+            <div class="col-xs-12" style="padding:0; margin-top:8px;">
+              <label for="breakLengthInput">Durée d’une pause</label>
+              <input id="breakLengthInput" type="text" class="form-control" value="25m">
+            </div>
           </div>
-        </div>
-      </div>
-    </div>
 
-    <!-- Settings -->
-    <div class="collapse" id="collapseSettings">
-      <div class="card card-body">
-        <div class="switch checkbox row">
-          <div class="col-xs-10 col-xs-offset-1">
+          <div class="completed-row" style="margin-top:10px;">
+            <label>Temps complété (minutes)</label>
+            <div id="completedMinutesValue" class="completed-minutes">0</div>
+          </div>
+
+          <hr style="margin:10px 0;">
+
+          <div class="muted" style="margin-bottom:6px;">Settings</div>
+          <div class="switch checkbox">
             <p><label><input id="perpetual" type="checkbox" checked> Perpetual Pomodoro</label></p>
             <p><label id="notificationsLabel"><input id="notify" type="checkbox"> Desktop Notifications</label></p>
           </div>
+
+          <!-- ✅ Mode minimaliste -->
+          <div style="margin-top:10px;">
+            <button id="btnMinimalMode" class="btn btn-primary btn-xs" type="button">
+              Mode minimaliste
+            </button>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- panneau Classement -->
+      <div id="panelRanking" class="top-panel" style="display:none;">
+        <div class="top-panel-inner">
+          <div class="history-head">
+            <span class="muted">🏆 Classement</span>
+
+            <select id="rankingRange" class="ranking-range">
+              <option value="day">Aujourd’hui</option>
+              <option value="week">Semaine</option>
+              <option value="month">Mois</option>
+              <option value="year">Année</option>
+            </select>
+
+            <button id="btnRefreshRanking" class="btn btn-primary btn-xs" type="button" aria-label="Rafraîchir">
+              <i class="fa fa-refresh" aria-hidden="true"></i>
+            </button>
+          </div>
+          <div id="rankingTableWrap" class="history-wrap"></div>
+        </div>
+      </div>
+
+      <!-- panneau Historique -->
+      <div id="panelHistory" class="top-panel" style="display:none;">
+        <div class="top-panel-inner">
+          <div class="history-head">
+            <span class="muted">Historique (par jour)</span>
+
+            <select id="historyRange" class="history-range">
+              <option value="day">Aujourd’hui</option>
+              <option value="week">7 jours</option>
+              <option value="month">30 jours</option>
+              <option value="year">1 an</option>
+              <option value="all">Tout</option>
+            </select>
+
+            <button id="btnRefreshHistory" class="btn btn-primary btn-xs" type="button" aria-label="Rafraîchir">
+              <i class="fa fa-refresh" aria-hidden="true"></i>
+            </button>
+          </div>
+          <div id="historyTableWrap" class="history-wrap"></div>
+        </div>
+      </div>
+
+      <!-- panneau Stats -->
+      <div id="panelPerformance" class="top-panel performance-panel" style="display:none;">
+        <div class="top-panel-inner">
+
+          <div class="perf-head">
+            <span class="muted">Stats</span>
+
+            <div class="perf-head-right">
+              <select id="perfMetric" class="perf-select">
+                <option value="focus">Graphique: Focus</option>
+                <option value="sessions">Graphique: Sessions</option>
+              </select>
+
+              <select id="perfChartType" class="perf-select">
+                <option value="line">Courbe</option>
+                <option value="bar">Bâtons</option>
+              </select>
+
+              <button id="btnToggleCalendar" class="btn btn-primary btn-xs" type="button" title="Calendrier">
+                📅
+              </button>
+
+              <button id="btnCloseStats" class="btn btn-primary btn-xs" type="button" title="Fermer">
+                <i class="fa fa-times" aria-hidden="true"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="perf-tabs">
+            <button class="perf-tab" data-range="day">Jour</button>
+            <button class="perf-tab" data-range="week">Semaine</button>
+            <button class="perf-tab" data-range="month">Mois</button>
+            <button class="perf-tab" data-range="year">Année</button>
+            <button class="perf-tab" data-range="all">Tout</button>
+          </div>
+
+          <div class="perf-wrap">
+
+            <div id="perfCalendarWrap" class="perf-calendar" style="display:none;">
+              <div class="cal-head">
+                <div class="cal-title">
+                  <span class="muted">📅 Calendrier</span>
+                  <span id="calMonthLabel" class="cal-month">—</span>
+                </div>
+                <div class="cal-actions">
+                  <button id="calPrev" class="btn btn-primary btn-xs" type="button" aria-label="Mois précédent">
+                    <i class="fa fa-chevron-left" aria-hidden="true"></i>
+                  </button>
+                  <button id="calNext" class="btn btn-primary btn-xs" type="button" aria-label="Mois suivant">
+                    <i class="fa fa-chevron-right" aria-hidden="true"></i>
+                  </button>
+                  <button id="calClear" class="btn btn-primary btn-xs" type="button">Reset</button>
+                </div>
+              </div>
+
+              <div class="muted cal-help">
+                Clique 2 dates pour créer une période. Tu peux en ajouter plusieurs. Active/désactive avec les “pills”.
+              </div>
+
+              <div class="cal-grid" id="calGrid"></div>
+
+              <div class="cal-periods">
+                <div class="muted cal-periods-title">Périodes sélectionnées</div>
+                <div id="calPeriodsList" class="cal-periods-list"></div>
+              </div>
+
+              <div class="cal-compare" id="calCompareWrap"></div>
+            </div>
+
+            <div class="perf-chart">
+              <canvas id="perfChart" class="perf-canvas"></canvas>
+            </div>
+
+            <div class="perf-stats">
+              <div class="perf-card">
+                <div class="perf-title-row">
+                  <div class="perf-title">Temps de focus (total)</div>
+                  <span id="perfTotalDelta" class="delta-badge"></span>
+                </div>
+                <div id="perfTotalValue" class="perf-value">—</div>
+              </div>
+
+              <div class="perf-card">
+                <div class="perf-title-row">
+                  <div class="perf-title">Performance moyenne</div>
+                  <span id="perfAvgDelta" class="delta-badge"></span>
+                </div>
+                <div id="perfAvgValue" class="perf-value">—</div>
+              </div>
+
+              <div class="perf-card perf-wide">
+                <div class="perf-title-row">
+                  <div class="perf-title">Progression (vs période précédente)</div>
+                  <span id="perfProgPct" class="delta-badge"></span>
+                </div>
+                <div id="perfProgValue" class="perf-value">—</div>
+              </div>
+
+              <div class="perf-card perf-wide">
+                <div class="perf-title-row">
+                  <div class="perf-title">Progression moyenne</div>
+                  <span id="perfAvgProgPct" class="delta-badge"></span>
+                </div>
+                <div id="perfAvgProgValue" class="perf-value">—</div>
+              </div>
+
+              <div class="perf-card perf-wide">
+                <div class="perf-title-row">
+                  <div class="perf-title">Record</div>
+                  <span id="perfRecordDelta" class="delta-badge"></span>
+                </div>
+                <div id="perfRecordValue" class="perf-value">—</div>
+              </div>
+
+              <div class="perf-card perf-wide">
+                <div class="perf-title-row">
+                  <div class="perf-title">Streak</div>
+                  <span id="perfStreakDelta" class="delta-badge"></span>
+                </div>
+                <div id="perfStreakValue" class="perf-value">🔥 Streak: —</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+      <!-- /Stats -->
+    </div>
+    <!-- /top tabs -->
+
+    <!-- Connexion (inchangée sauf champ password + bouton toggle) -->
+    <div id="authBox" class="row" style="margin-top:12px;">
+      <div class="col-xs-10 col-xs-offset-1">
+        <div class="panel panel-default auth-panel">
+          <div class="panel-body auth-body">
+            <div class="form-group">
+              <label class="muted">Nom d’utilisateur</label>
+              <input id="authUsername" class="form-control" placeholder="ex: ata" autocomplete="username" />
+            </div>
+
+            <!-- password masqué + bouton afficher/masquer -->
+            <div class="form-group" style="position:relative;">
+              <label class="muted">Mot de passe</label>
+              <input id="authCode" type="password" class="form-control" placeholder="ex: mot secret" autocomplete="current-password" />
+              <button
+                type="button"
+                aria-label="Afficher / masquer le mot de passe"
+                onclick="
+                  const i = document.getElementById('authCode');
+                  this.textContent = i.type === 'password' ? '🙈' : '👁️';
+                  i.type = i.type === 'password' ? 'text' : 'password';
+                "
+                style="
+                  position:absolute;
+                  right:10px;
+                  top:34px;
+                  background:none;
+                  border:none;
+                  cursor:pointer;
+                  color:#bdbdbd;
+                  font-size:14px;
+                "
+              >👁️</button>
+            </div>
+
+            <button id="btnLogin" class="btn btn-primary" type="button">Se connecter</button>
+            <button id="btnSignup" class="btn btn-primary" type="button">Créer mon compte</button>
+
+            <div id="authStatus" class="auth-status"></div>
+          </div>
         </div>
       </div>
     </div>
 
+    <!-- APP -->
+    <div id="appMain" style="display:none;">
+
+      <!-- STAGE: anneau central + 5 anneaux -->
+      <div class="rings-stage">
+
+        <!-- minis -->
+        <div class="mini-ring pos-tl" aria-label="Temps de focus restant">
+          <svg class="mini-svg" viewBox="0 0 120 120">
+            <circle class="mini-bg" cx="60" cy="60" r="52"></circle>
+            <circle id="ringRemFocusProg" class="mini-prog" cx="60" cy="60" r="52"
+                    transform="rotate(-90 60 60)"></circle>
+          </svg>
+          <div class="mini-center">
+            <div class="mini-label">Focus restant</div>
+            <div id="ringRemFocusValue" class="mini-value">—</div>
+            <div id="ringRemFocusPct" class="mini-pct">—</div>
+          </div>
+        </div>
+
+        <div class="mini-ring pos-tr" aria-label="Focus">
+          <svg class="mini-svg" viewBox="0 0 120 120">
+            <circle class="mini-bg" cx="60" cy="60" r="52"></circle>
+            <circle id="ringFocusProg" class="mini-prog" cx="60" cy="60" r="52"
+                    transform="rotate(-90 60 60)"></circle>
+          </svg>
+          <div class="mini-center">
+            <div class="mini-label">Focus</div>
+            <div id="ringFocusValue" class="mini-value">—</div>
+            <div id="ringFocusPct" class="mini-pct">—</div>
+          </div>
+        </div>
+
+        <div class="mini-ring pos-bl" aria-label="Sessions restantes">
+          <svg class="mini-svg" viewBox="0 0 120 120">
+            <circle class="mini-bg" cx="60" cy="60" r="52"></circle>
+            <circle id="ringSessRemProg" class="mini-prog" cx="60" cy="60" r="52"
+                    transform="rotate(-90 60 60)"></circle>
+          </svg>
+          <div class="mini-center">
+            <div class="mini-label">Sessions restantes</div>
+            <div id="ringSessRemValue" class="mini-value">—</div>
+            <div id="ringSessRemPct" class="mini-pct">—</div>
+          </div>
+        </div>
+
+        <div class="mini-ring pos-br" aria-label="Sessions">
+          <svg class="mini-svg" viewBox="0 0 120 120">
+            <circle class="mini-bg" cx="60" cy="60" r="52"></circle>
+            <circle id="ringSessionsProg" class="mini-prog" cx="60" cy="60" r="52"
+                    transform="rotate(-90 60 60)"></circle>
+          </svg>
+          <div class="mini-center">
+            <div class="mini-label">Sessions</div>
+            <div id="ringSessionsValue" class="mini-value">—</div>
+            <div id="ringSessionsPct" class="mini-pct">—</div>
+          </div>
+        </div>
+
+        <div class="mini-ring pos-bm mini-eta" aria-label="Fin du focus">
+          <svg class="mini-svg" viewBox="0 0 120 120">
+            <circle class="mini-bg" cx="60" cy="60" r="52"></circle>
+            <circle id="ringEtaProg" class="mini-prog" cx="60" cy="60" r="52"
+                    transform="rotate(-90 60 60)"></circle>
+          </svg>
+          <div class="mini-center">
+            <div class="mini-label">Fin</div>
+            <div id="ringEtaValue" class="mini-value">—</div>
+            <div id="ringEtaPct" class="mini-pct">—</div>
+          </div>
+        </div>
+
+        <!-- central -->
+        <div class="ring-wrap ring-main center-block">
+          <svg class="progress-ring" viewBox="0 0 180 180" aria-label="Progress">
+            <circle class="ring-bg" cx="90" cy="90" r="80"
+                    fill="none" stroke="#ffffff" stroke-opacity="0.14" stroke-width="2"></circle>
+            <circle id="ringProgress" class="ring-prog" cx="90" cy="90" r="80"
+                    fill="none" stroke="#22C55E" stroke-width="2" stroke-linecap="round"
+                    transform="rotate(-90 90 90)"></circle>
+          </svg>
+
+          <div class="ring-center">
+            <div class="ring-center-inner">
+              <div id="clockTime" class="clock-time"></div>
+
+              <!-- Quote -->
+              <div id="quoteWrap" class="quote-wrap">
+                <div id="quoteText" class="quote-text"></div>
+                <div id="quoteAuthor" class="quote-author"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+      <!-- /rings-stage -->
+
+      <!-- Boutons Play / Reset -->
+      <div class="row">
+        <div class="play-reset-row">
+          <span class="fa-stack fa-md icon" title="Play / Pause">
+            <i class="fa fa-circle fa-stack-2x fa-inverse"></i>
+            <i id="playPauseButton" class="fa fa-play fa-stack-1x"></i>
+          </span>
+          <span class="fa-stack fa-md icon" title="Reset (ne remet pas Focus/Sessions)">
+            <i class="fa fa-circle fa-stack-2x fa-inverse"></i>
+            <i id="resetClockButton" class="fa fa-refresh fa-stack-1x"></i>
+          </span>
+        </div>
+      </div>
+
+      <!-- éléments legacy cachés -->
+      <div class="legacy-hidden">
+        <div class="row info-row top-row">
+          <div class="col-xs-4 info-left">
+            <span class="info-label">Temps de focus restant</span>
+            <span id="remainingFocusValue" class="remain-value">—</span>
+          </div>
+          <div class="col-xs-4 info-center">
+            <span class="info-label">Fin du focus</span>
+            <span id="etaFinish" class="eta-value">—</span>
+          </div>
+          <div class="col-xs-4 info-right">
+            <span class="info-label">Sessions restantes</span>
+            <span id="sessionsRemaining" class="sessions-remain-value">—</span>
+          </div>
+        </div>
+
+        <div class="row info-row bottom-row">
+          <div class="col-xs-6 info-left">
+            <span class="info-label">Focus</span>
+            <span id="focusValue" class="focus-value">0s</span>
+          </div>
+          <div class="col-xs-6 info-right">
+            <span class="info-label">Sessions</span>
+            <span id="sessionsValue" class="sessions-value">0</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Modal reset day -->
+  <div id="resetDayModal" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-sm" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+          <h4 class="modal-title">Réinitialisation de la journée</h4>
+        </div>
+        <div class="modal-body">
+          Êtes-vous sûr ? Cela supprimera toutes les données de la journée.
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-default" data-dismiss="modal">Annuler</button>
+          <button id="btnResetDayConfirm" type="button" class="btn btn-primary">Valider</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Dépendances JS -->
   <script src="https://code.jquery.com/jquery-2.2.1.min.js"></script>
   <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
-
-  <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <!-- Notre JS (CodePen: onglet JS) -->
+  <!-- Notre JS -->
+  <script src="app.js"></script>
 </body>
 </html>
-    <script  src="./script.js"></script>
+    <script src='https://code.jquery.com/jquery-2.2.1.min.js'></script>
+<script src='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js'></script>
+<script src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'></script><script  src="./script.js"></script>
 
   </body>
   
