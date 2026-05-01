@@ -8,11 +8,15 @@ const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 /***********************
  * AUTH STATE
  ***********************/
-let currentUser = null; // {id, username}
-
-// ✅ autosave every second
+let currentUser = null;
 let autosaveInterval = null;
 let lastSavedEpochSec = null;
+
+let endedDayISO = null;
+let endedDayFinalSeconds = null;
+let endedDayFinalSessions = null;
+
+let goalExplodedTodayISO = null;
 
 function setAuthStatus(msg){
   const el = document.getElementById("authStatus");
@@ -29,12 +33,12 @@ async function sha256(text) {
 }
 
 /***********************
- * ✅ AUDIO CUES (focus/break)
- * - Focus: play SOUND_FOCUS when 1s remaining AND when focus session ends
- * - Break: play SOUND_BREAK when 1s remaining
+ * AUDIO CUES
+ * Focus : 2 sec avant fin
+ * Pause : 10 sec avant fin
  ***********************/
 const SOUND_FOCUS_URL = "https://files.catbox.moe/86hbuo.mp3";
-const SOUND_BREAK_URL = "https://files.catbox.moe/am7eme.mp3";
+const SOUND_BREAK_URL = "https://cdn.shopify.com/s/files/1/0935/0132/5648/files/majestic.mp3?v=1777663414";
 
 const audioFocus = new Audio(SOUND_FOCUS_URL);
 audioFocus.preload = "auto";
@@ -42,7 +46,6 @@ audioFocus.preload = "auto";
 const audioBreak = new Audio(SOUND_BREAK_URL);
 audioBreak.preload = "auto";
 
-// Guard to avoid repeated plays (tick runs every 250ms)
 let lastSoundCueKey = null;
 
 function playSound(aud){
@@ -55,7 +58,6 @@ function playSound(aud){
 }
 
 function segmentCueKey(suffix){
-  // targetEndTime uniquely identifies the running segment; fall back to mode if null
   return `${currentMode}|${targetEndTime ?? "paused"}|${suffix}`;
 }
 
@@ -147,17 +149,12 @@ function toggleTopPanel(which){
     $perf.show();
     $("#tabPerformance").addClass("active");
     loadPerformance().catch(()=>{});
-
-    // ✅ calendrier reste caché par défaut
     $("#perfCalendarWrap").hide();
     calendarEnabled = false;
     updateCalendarButtonUI();
   }
 }
 
-/***********************
- * Click outside to close STATS
- ***********************/
 document.addEventListener("mousedown", function(e){
   const panel = document.getElementById("panelPerformance");
   const tab = document.getElementById("tabPerformance");
@@ -182,6 +179,7 @@ function parseDurationToSeconds(str){
     var m = parseInt(parts[1],10) || 0;
     return (h*60 + m) * 60;
   }
+
   var hMatch = str.match(/(\d+)\s*h/);
   var mMatch = str.match(/(\d+)\s*m/);
   if(hMatch || mMatch){
@@ -189,11 +187,13 @@ function parseDurationToSeconds(str){
     var m = mMatch ? parseInt(mMatch[1],10) : 0;
     return (h*60 + m) * 60;
   }
+
   var n = parseInt(str,10);
   if(!isNaN(n)) return n*60;
 
   return null;
 }
+
 function formatHMSfromSeconds(sec){
   sec = Math.max(0, Math.round(sec));
   var h=Math.floor(sec/3600), m=Math.floor((sec-h*3600)/60), s=sec-h*3600-m*60;
@@ -201,6 +201,7 @@ function formatHMSfromSeconds(sec){
   var t=(h===0)?(m+':'+s):(h+':'+m+':'+s); if(h===0&&m===0)t=s;
   return t;
 }
+
 function formatTimeOfDay(date){
   const hh = date.getHours();
   const mm = date.getMinutes();
@@ -208,6 +209,7 @@ function formatTimeOfDay(date){
   const M = (mm < 10 ? '0' : '') + mm;
   return `${H}h${M}`;
 }
+
 function formatHMSUnitsLower(sec){
   sec = Math.max(0, Math.round(sec));
   var h = Math.floor(sec/3600);
@@ -217,6 +219,7 @@ function formatHMSUnitsLower(sec){
   if(m > 0) return `${m}m${s}s`;
   return `${s}s`;
 }
+
 function formatSignedHMSUnitsLower(sec){
   if(sec === null || typeof sec !== "number" || !isFinite(sec)) return "—";
   if(sec === 0) return "0s";
@@ -224,7 +227,6 @@ function formatSignedHMSUnitsLower(sec){
   return sign + formatHMSUnitsLower(Math.abs(sec));
 }
 
-/* ========= État ========= */
 var startSeconds,
     totalFocusSeconds = 0,
     sessionsCompleted = 0,
@@ -240,7 +242,6 @@ var pausedRemainingSeconds = null;
 
 var RADIUS=80, CIRCUMFERENCE=2*Math.PI*RADIUS;
 
-/* === Snapshots pause === */
 var pausedFocusedSecSnapshot = null;
 var pausedRemainingFocusSecSnapshot = null;
 
@@ -248,7 +249,6 @@ function isPaused(){
   return (targetEndTime==null && pausedRemainingSeconds!=null);
 }
 
-/* ========= Anneau + affichage ========= */
 function updateRing(p){
   p=Math.max(0,Math.min(1,p));
   var off=CIRCUMFERENCE*(1-p);
@@ -257,6 +257,7 @@ function updateRing(p){
   ring.setAttribute('stroke-dasharray', CIRCUMFERENCE);
   ring.setAttribute('stroke-dashoffset', off);
 }
+
 function showClock(sec){
   var el = document.getElementById('clockTime');
   if(!el) return;
@@ -265,7 +266,7 @@ function showClock(sec){
 }
 
 /***********************
- * ✅ MINI RINGS (progress like central ring)
+ * MINI RINGS
  ***********************/
 function setMiniRingProgress(circleId, pct01){
   const c = document.getElementById(circleId);
@@ -277,9 +278,8 @@ function setMiniRingProgress(circleId, pct01){
 
   const C = 2 * Math.PI * r;
 
-  // Use style for reliability across browsers
   c.style.strokeDasharray = `${C}`;
-  c.style.strokeDashoffset = `${C * (1 - p)}`; // p=0 => empty, p=1 => full
+  c.style.strokeDashoffset = `${C * (1 - p)}`;
 }
 
 function pctText(p01){
@@ -288,7 +288,7 @@ function pctText(p01){
 }
 
 /***********************
- * ✅ QUOTES (1 par minute, aléatoire)
+ * QUOTES
  ***********************/
 let quoteInterval = null;
 
@@ -351,14 +351,8 @@ function setRandomQuote(force){
   const qa = document.getElementById("quoteAuthor");
   if(!qt || !qa) return;
 
-  if(!force && document.body.classList.contains("minimal-mode")){
-    // en minimal mode on garde quand même la quote (tu n’as pas demandé de la cacher)
-  }
-
   const q = QUOTES[Math.floor(Math.random() * QUOTES.length)] || {text:"", author:""};
-  // ✅ entre guillemets + texte en gras via CSS
   qt.textContent = q.text ? `“${q.text}”` : "";
-  // ✅ auteur sans tiret
   qa.textContent = q.author ? q.author : "";
 }
 
@@ -367,12 +361,13 @@ function startQuotesLoop(){
   setRandomQuote(true);
   quoteInterval = setInterval(()=> setRandomQuote(true), 60000);
 }
+
 function stopQuotesLoop(){
   if(quoteInterval){ clearInterval(quoteInterval); quoteInterval = null; }
 }
 
 /***********************
- * ✅ CONFETTIS (fin de session focus)
+ * CONFETTIS + OBJECTIF
  ***********************/
 function launchConfetti(){
   const canvas = document.createElement("canvas");
@@ -398,7 +393,6 @@ function launchConfetti(){
   const W = () => window.innerWidth;
   const H = () => window.innerHeight;
 
-  // ✅ "toutes les couleurs" : palette large + random unique-ish per confetti
   const palette = [
     "#FF1744","#F50057","#D500F9","#651FFF","#3D5AFE","#2979FF","#00B0FF","#00E5FF",
     "#1DE9B6","#00E676","#76FF03","#C6FF00","#FFEA00","#FFC400","#FF9100","#FF3D00",
@@ -413,8 +407,6 @@ function launchConfetti(){
     const y = H() / 2;
     const ang = Math.random() * Math.PI * 2;
     const spd = 6 + Math.random() * 10;
-
-    // try to vary colors heavily
     const color = palette[i % palette.length];
 
     return {
@@ -476,14 +468,34 @@ function launchConfetti(){
   raf = requestAnimationFrame(draw);
 }
 
-/* ========= Tick ========= */
+function triggerGoalExplodeOnce(){
+  const day = todayISO();
+  if(goalExplodedTodayISO === day) return;
+
+  goalExplodedTodayISO = day;
+
+  const stage = document.querySelector(".rings-stage");
+  if(stage){
+    stage.classList.remove("goal-explode");
+    void stage.offsetWidth;
+    stage.classList.add("goal-explode");
+  }
+
+  launchConfetti();
+}
+
+/***********************
+ * TICK
+ ***********************/
 function startTick(){ stopTick(); lastShownSeconds=null; tickTimer=setInterval(tick,250); tick(); }
 function stopTick(){ if(tickTimer){ clearInterval(tickTimer); tickTimer=null; } }
+
 function secondsRemainingNow(){
   if(targetEndTime==null) return pausedRemainingSeconds ?? 0;
   var ms=Math.max(0,targetEndTime-Date.now());
   return Math.round(ms/1000);
 }
+
 function hardUpdateFromNow(){
   if(targetEndTime==null) return;
   var sec=secondsRemainingNow();
@@ -494,6 +506,7 @@ function hardUpdateFromNow(){
   renderCompletedMinutes();
   saveAllIfSecondChanged().catch(()=>{});
 }
+
 function tick(){
   if(targetEndTime==null) return;
 
@@ -503,13 +516,19 @@ function tick(){
     showClock(sec);
     lastShownSeconds=sec;
 
-    // ✅ sound cues at 1 second remaining (once per segment)
-    if(sec === 1){
-      const key = segmentCueKey("t1");
+    if(currentMode === "task" && sec === 2){
+      const key = segmentCueKey("focus_t2");
       if(lastSoundCueKey !== key){
         lastSoundCueKey = key;
-        if(currentMode === "task") playSound(audioFocus);
-        else if(currentMode === "break") playSound(audioBreak);
+        playSound(audioFocus);
+      }
+    }
+
+    if(currentMode === "break" && sec === 10){
+      const key = segmentCueKey("break_t10");
+      if(lastSoundCueKey !== key){
+        lastSoundCueKey = key;
+        playSound(audioBreak);
       }
     }
 
@@ -523,7 +542,7 @@ function tick(){
 }
 
 /***********************
- * ✅ SAVE EACH SECOND (DB)
+ * SAVE EACH SECOND
  ***********************/
 async function saveAllIfSecondChanged(){
   if(!currentUser?.id) return;
@@ -542,7 +561,9 @@ async function saveAllIfSecondChanged(){
   }
 }
 
-/* ========= Focus effectif ========= */
+/***********************
+ * FOCUS EFFECTIF
+ ***********************/
 function effectiveFocusSeconds(){
   if(isPaused() && pausedFocusedSecSnapshot!=null){
     return pausedFocusedSecSnapshot;
@@ -575,21 +596,24 @@ function sessionsForHistory(){
   return sessionsCompleted;
 }
 
-/* ========= UI ========= */
 function renderFocus(){
   var sec = effectiveFocusSeconds();
   document.getElementById('focusValue').textContent = formatHMSUnitsLower(sec);
 }
+
 function renderCompletedMinutes(){
   var sec = effectiveFocusSeconds();
   var minutes = Math.floor(sec / 60);
   document.getElementById('completedMinutesValue').textContent = minutes;
 }
+
 function renderSessions(){
   document.getElementById('sessionsValue').textContent = String(sessionsCompleted);
 }
 
-/* ========= Fin de segment ========= */
+/***********************
+ * FIN DE SEGMENT
+ ***********************/
 function onSegmentEnd(){
   if(targetEndTime==null) return;
 
@@ -613,10 +637,6 @@ function onSegmentEnd(){
       upsertDailyHistory(currentUser.id).catch(()=>{});
     }
 
-    // ✅ sound at focus session end
-    playSound(audioFocus);
-
-    // ✅ confettis fin de session focus
     launchConfetti();
 
     startNext('break');
@@ -627,13 +647,14 @@ function onSegmentEnd(){
   saveAllIfSecondChanged().catch(()=>{});
 }
 
-/* ========= Prochain segment ========= */
+/***********************
+ * PROCHAIN SEGMENT
+ ***********************/
 function startNext(mode){
   currentMode=mode;
   var sessionS = parseDurationToSeconds($('#sessionLengthInput').val()) || 0;
   var breakS   = parseDurationToSeconds($('#breakLengthInput').val())   || 0;
 
-  // reset cue guard for new segment
   lastSoundCueKey = null;
 
   if(mode==='task'){
@@ -663,7 +684,9 @@ function startNext(mode){
   saveAllIfSecondChanged().catch(()=>{});
 }
 
-/* ========= Statistiques ========= */
+/***********************
+ * STATS UI
+ ***********************/
 function updateStatsUI(){
   var goalS     = parseDurationToSeconds($('#goalTimeInput').val());
   var sessionS  = parseDurationToSeconds($('#sessionLengthInput').val()) || 0;
@@ -686,29 +709,24 @@ function updateStatsUI(){
   }
 
   var etaText = '—';
-  var etaTotalSec = null;
   if(remainingFocusSec!=null){
     var breaksCount = sessionsRemaining!=null ? Math.max(0, sessionsRemaining-1) : 0;
-    etaTotalSec = remainingFocusSec + breaksCount*breakS;
+    var etaTotalSec = remainingFocusSec + breaksCount*breakS;
     var etaDate = new Date(Date.now() + etaTotalSec*1000);
     etaText = formatTimeOfDay(etaDate);
   }
 
-  // (anciens champs, conservés)
   document.getElementById('remainingFocusValue').textContent =
     (remainingFocusSec!=null) ? formatHMSUnitsLower(remainingFocusSec) : '—';
   document.getElementById('sessionsRemaining').textContent =
     (sessionsRemaining!=null) ? sessionsRemaining : '—';
   document.getElementById('etaFinish').textContent = etaText;
 
-  // ✅ MINI RINGS : progression "comme l'anneau central"
   const plannedSessions = (goalS!=null && sessionS>0) ? Math.max(1, Math.ceil(goalS / sessionS)) : null;
 
-  // Progress toward goal (0 at start, 1 at goal)
   const goalProg = (goalS!=null) ? (focusedSec / Math.max(1, goalS)) : null;
   const goalProgClamped = (goalProg==null) ? null : Math.max(0, Math.min(1, goalProg));
 
-  // Focus restant (remplit quand on se rapproche de l'objectif)
   document.getElementById("ringRemFocusValue").textContent =
     (remainingFocusSec!=null) ? formatHMSUnitsLower(remainingFocusSec) : "—";
   const remProg = (goalS!=null && remainingFocusSec!=null) ? (1 - (remainingFocusSec / Math.max(1, goalS))) : null;
@@ -716,12 +734,10 @@ function updateStatsUI(){
   document.getElementById("ringRemFocusPct").textContent = pctText(remProgClamped);
   setMiniRingProgress("ringRemFocusProg", remProgClamped ?? 0);
 
-  // Focus (fait)
   document.getElementById("ringFocusValue").textContent = formatHMSUnitsLower(focusedSec);
   document.getElementById("ringFocusPct").textContent = pctText(goalProgClamped);
   setMiniRingProgress("ringFocusProg", goalProgClamped ?? 0);
 
-  // Sessions restantes (remplit au fur et à mesure qu'on consomme les sessions)
   document.getElementById("ringSessRemValue").textContent =
     (sessionsRemaining!=null) ? String(sessionsRemaining) : "—";
   const sessRemProg = (plannedSessions!=null && sessionsRemaining!=null)
@@ -731,7 +747,6 @@ function updateStatsUI(){
   document.getElementById("ringSessRemPct").textContent = pctText(sessRemProgClamped);
   setMiniRingProgress("ringSessRemProg", sessRemProgClamped ?? 0);
 
-  // Sessions (faites)
   document.getElementById("ringSessionsValue").textContent = String(sessionsCompleted);
   const sessProg = (plannedSessions!=null)
     ? (sessionsCompleted / Math.max(1, plannedSessions))
@@ -740,14 +755,17 @@ function updateStatsUI(){
   document.getElementById("ringSessionsPct").textContent = pctText(sessProgClamped);
   setMiniRingProgress("ringSessionsProg", sessProgClamped ?? 0);
 
-  // ETA (fin) : suit la progression globale (vide au début, rempli à la fin)
   document.getElementById("ringEtaValue").textContent = etaText;
   document.getElementById("ringEtaPct").textContent = pctText(goalProgClamped);
   setMiniRingProgress("ringEtaProg", goalProgClamped ?? 0);
+
+  if(goalS != null && focusedSec >= goalS){
+    triggerGoalExplodeOnce();
+  }
 }
 
 /***********************
- * TIMER_STATE (Supabase)
+ * TIMER_STATE
  ***********************/
 function buildStateJSON(){
   return {
@@ -766,7 +784,13 @@ function buildStateJSON(){
     pausedRemainingSeconds,
 
     pausedFocusedSecSnapshot,
-    pausedRemainingFocusSecSnapshot
+    pausedRemainingFocusSecSnapshot,
+
+    endedDayISO,
+    endedDayFinalSeconds,
+    endedDayFinalSessions,
+
+    goalExplodedTodayISO
   };
 }
 
@@ -789,6 +813,12 @@ function applyStateJSON(state){
 
   pausedFocusedSecSnapshot = state.pausedFocusedSecSnapshot ?? pausedFocusedSecSnapshot;
   pausedRemainingFocusSecSnapshot = state.pausedRemainingFocusSecSnapshot ?? pausedRemainingFocusSecSnapshot;
+
+  endedDayISO = state.endedDayISO ?? endedDayISO;
+  endedDayFinalSeconds = state.endedDayFinalSeconds ?? endedDayFinalSeconds;
+  endedDayFinalSessions = state.endedDayFinalSessions ?? endedDayFinalSessions;
+
+  goalExplodedTodayISO = state.goalExplodedTodayISO ?? goalExplodedTodayISO;
 
   renderSessions();
   renderFocus();
@@ -845,7 +875,7 @@ async function loadTimerState(){
 }
 
 /***********************
- * FOCUS_HISTORY (Supabase)
+ * FOCUS_HISTORY
  ***********************/
 function todayISO(){
   const d = new Date();
@@ -864,10 +894,48 @@ function isoDaysAgo(n){
   return `${yyyy}-${mm}-${dd}`;
 }
 
+function sanitizeFocusSeconds(sec){
+  sec = Number(sec || 0);
+  if(!isFinite(sec) || sec < 0) return 0;
+  return Math.min(sec, 24 * 3600);
+}
+
+function mergeDailyRows(rows){
+  const map = new Map();
+
+  for(const r of rows || []){
+    const day = r.day;
+    if(!day) continue;
+
+    const focused = sanitizeFocusSeconds(r.focused_seconds);
+    const sessions = Number(r.sessions_completed || 0);
+
+    if(!map.has(day)){
+      map.set(day, {
+        ...r,
+        focused_seconds: focused,
+        sessions_completed: sessions
+      });
+    } else {
+      const existing = map.get(day);
+      existing.focused_seconds = Math.max(existing.focused_seconds || 0, focused);
+      existing.sessions_completed = Math.max(existing.sessions_completed || 0, sessions);
+    }
+  }
+
+  return Array.from(map.values()).sort((a,b) => b.day.localeCompare(a.day));
+}
+
 async function upsertDailyHistory(userId){
   const day = todayISO();
-  const focused_seconds = effectiveFocusSeconds();
-  const sessions_completed = sessionsForHistory();
+
+  let focused_seconds = effectiveFocusSeconds();
+  let sessions_completed = sessionsForHistory();
+
+  if(endedDayISO === day && endedDayFinalSeconds != null){
+    focused_seconds = endedDayFinalSeconds;
+    sessions_completed = endedDayFinalSessions || 0;
+  }
 
   try{
     const { error } = await db
@@ -929,7 +997,8 @@ async function loadHistory(){
     renderHistory([]);
     return;
   }
-  renderHistory(data || []);
+
+  renderHistory(mergeDailyRows(data || []));
 }
 
 function renderHistory(rows){
@@ -954,7 +1023,7 @@ function renderHistory(rows){
         ${rows.map(r => `
           <tr>
             <td>${r.day}</td>
-            <td>${formatHMSUnitsLower(r.focused_seconds || 0)}</td>
+            <td>${formatHMSUnitsLower(sanitizeFocusSeconds(r.focused_seconds))}</td>
             <td>${r.sessions_completed || 0}</td>
           </tr>
         `).join("")}
@@ -964,7 +1033,7 @@ function renderHistory(rows){
 }
 
 /***********************
- * CLASSEMENT (Leaderboard)
+ * CLASSEMENT
  ***********************/
 async function loadLeaderboard(){
   const wrap = document.getElementById("rankingTableWrap");
@@ -995,19 +1064,46 @@ async function loadLeaderboard(){
   }
 
   const rows = data || [];
-  const map = new Map();
+  const perUserDay = new Map();
 
   for(const r of rows){
     const uid = r.user_id;
-    if(!uid) continue;
-    const username = (r.profiles && r.profiles.username) ? r.profiles.username : "—";
-    const focused = Number(r.focused_seconds || 0);
+    if(!uid || !r.day) continue;
 
-    if(!map.has(uid)){
-      map.set(uid, { user_id: uid, username, total: focused });
+    const username = (r.profiles && r.profiles.username) ? r.profiles.username : "—";
+    const focused = sanitizeFocusSeconds(r.focused_seconds);
+    const key = `${uid}|${r.day}`;
+
+    if(!perUserDay.has(key)){
+      perUserDay.set(key, {
+        user_id: uid,
+        username,
+        day: r.day,
+        focused_seconds: focused
+      });
     } else {
-      map.get(uid).total += focused;
-      if(map.get(uid).username === "—" && username !== "—") map.get(uid).username = username;
+      const existing = perUserDay.get(key);
+      existing.focused_seconds = Math.max(existing.focused_seconds || 0, focused);
+      if(existing.username === "—" && username !== "—"){
+        existing.username = username;
+      }
+    }
+  }
+
+  const map = new Map();
+
+  for(const r of perUserDay.values()){
+    if(!map.has(r.user_id)){
+      map.set(r.user_id, {
+        user_id: r.user_id,
+        username: r.username,
+        total: r.focused_seconds
+      });
+    } else {
+      map.get(r.user_id).total += r.focused_seconds;
+      if(map.get(r.user_id).username === "—" && r.username !== "—"){
+        map.get(r.user_id).username = r.username;
+      }
     }
   }
 
@@ -1058,14 +1154,13 @@ function renderLeaderboard(rows){
 }
 
 /***********************
- * ✅ STATS (calendar gate)
+ * STATS
  ***********************/
 let perfRange = "day";
 let perfMetric = "focus";
 let perfChartType = "line";
 let perfCacheRows = null;
 
-/* ✅ calendar gating: only active when enabled + periods active */
 let calendarEnabled = false;
 
 let calMonthOffset = 0;
@@ -1080,19 +1175,23 @@ function periodDaysFor(range){
   if(range==="year") return 365;
   return null;
 }
+
 function parseISODate(iso){
   const [y,m,d] = iso.split("-").map(n=>parseInt(n,10));
   return new Date(y, (m-1), d);
 }
+
 function formatShortDM(iso){
   const dt = parseISODate(iso);
   const dd = String(dt.getDate()).padStart(2,'0');
   const mm = String(dt.getMonth()+1).padStart(2,'0');
   return `${dd}/${mm}`;
 }
+
 function sumRows(rows, field){
   return rows.reduce((a,r)=>a+(Number(r[field]||0)),0);
 }
+
 function pctChange(curr, prev){
   if(prev === 0){
     if(curr === 0) return 0;
@@ -1100,6 +1199,7 @@ function pctChange(curr, prev){
   }
   return ((curr - prev) / prev) * 100;
 }
+
 function setDeltaBubble(el, pct){
   if(!el) return;
   if(pct === null || typeof pct !== "number" || !isFinite(pct) || pct === 0){
@@ -1112,6 +1212,7 @@ function setDeltaBubble(el, pct){
   el.classList.toggle("delta-pos", pct > 0);
   el.classList.toggle("delta-neg", pct < 0);
 }
+
 function formatFrenchLongDate(iso){
   const dt = parseISODate(iso);
   const weekday = new Intl.DateTimeFormat("fr-FR", { weekday:"long" }).format(dt);
@@ -1139,7 +1240,7 @@ async function fetchPerfRowsIfNeeded(){
     return [];
   }
 
-  perfCacheRows = (data || []);
+  perfCacheRows = mergeDailyRows(data || []).reverse();
   return perfCacheRows;
 }
 
@@ -1149,6 +1250,7 @@ function filterRowsForRange(rows, range){
   const startISO = isoDaysAgo(days-1);
   return rows.filter(r => r.day >= startISO);
 }
+
 function filterRowsForPreviousRange(rows, range){
   if(range === "all") return [];
   const days = periodDaysFor(range);
@@ -1157,7 +1259,6 @@ function filterRowsForPreviousRange(rows, range){
   return rows.filter(r => r.day >= startPrev && r.day <= endPrev);
 }
 
-/* ✅ calendar priority only if enabled + active periods */
 function hasActiveCalendarPeriods(){
   if(!calendarEnabled) return false;
   return calPeriods.some(p => p.active);
@@ -1189,7 +1290,7 @@ function rowsForCalendarSelection(rowsAll){
 
 function computeStreak(rows){
   if(!rows || !rows.length) return 0;
-  const set = new Set(rows.map(r => r.day));
+  const set = new Set(rows.filter(r => Number(r.focused_seconds || 0) > 0).map(r => r.day));
   let streak = 0;
   for(let i=0; i<500; i++){
     const d = isoDaysAgo(i);
@@ -1198,6 +1299,7 @@ function computeStreak(rows){
   }
   return streak;
 }
+
 function computeRecord(rows){
   if(!rows || !rows.length) return { day: "—", value: 0 };
   let best = rows[0];
@@ -1207,7 +1309,6 @@ function computeRecord(rows){
   return { day: best.day, value: Number(best.focused_seconds||0) };
 }
 
-/* ===== charts ===== */
 function drawBarChart(canvas, labels, values){
   if(!canvas) return;
   const ctx = canvas.getContext("2d");
@@ -1322,7 +1423,6 @@ function drawRoundedLineChart(canvas, labels, values){
   ctx.fillText(String(Math.round(maxV)), 6, padT+6);
 }
 
-/* ===== load performance ===== */
 async function loadPerformance(){
   if(!currentUser?.id) return;
 
@@ -1377,6 +1477,7 @@ async function loadPerformance(){
     avgProgSec = avgFocus - prevAvg;
     avgProgPct = pctChange(avgFocus, prevAvg);
   }
+
   const $apV = document.getElementById("perfAvgProgValue");
   const $apP = document.getElementById("perfAvgProgPct");
   if($apV) $apV.textContent = (avgProgSec==null) ? "—" : `${formatSignedHMSUnitsLower(avgProgSec)} (moy: ${formatHMSUnitsLower(avgFocus)})`;
@@ -1435,7 +1536,7 @@ async function loadPerformance(){
 }
 
 /***********************
- * ✅ CALENDAR UI + logic (render only when enabled)
+ * CALENDAR UI
  ***********************/
 function updateCalendarButtonUI(){
   const btn = document.getElementById("btnToggleCalendar");
@@ -1450,24 +1551,29 @@ function monthStartDate(offset){
   d.setMonth(d.getMonth() + offset);
   return d;
 }
+
 function daysInMonth(dt){
   const d = new Date(dt.getFullYear(), dt.getMonth()+1, 0);
   return d.getDate();
 }
+
 function toISO(d){
   const yyyy=d.getFullYear();
   const mm=String(d.getMonth()+1).padStart(2,'0');
   const dd=String(d.getDate()).padStart(2,'0');
   return `${yyyy}-${mm}-${dd}`;
 }
+
 function isoBetween(x,a,b){
   const lo = (a<=b)?a:b;
   const hi = (a<=b)?b:a;
   return x>=lo && x<=hi;
 }
+
 function periodLabel(p){
   return `${p.startISO} → ${p.endISO}`;
 }
+
 function newPeriod(startISO,endISO){
   return { id: "p_"+Math.random().toString(16).slice(2), startISO, endISO, active:true };
 }
@@ -1497,6 +1603,10 @@ async function renderCalendar(){
   const prevDim = prev.getDate();
 
   const cells = [];
+  const activePeriodDays = hasActiveCalendarPeriods()
+    ? expandPeriodsToDays(calPeriods.filter(p=>p.active))
+    : [];
+
   for(let i=0;i<42;i++){
     const dayNum = i - firstDow + 1;
     let cellDate = null;
@@ -1529,9 +1639,6 @@ async function renderCalendar(){
     const inRange =
       (calClickStart && calClickEnd && isoBetween(iso, calClickStart, calClickEnd));
 
-    const activePeriodDays = hasActiveCalendarPeriods()
-      ? expandPeriodsToDays(calPeriods.filter(p=>p.active))
-      : [];
     const inActive = activePeriodDays.includes(iso);
 
     const cls = [
@@ -1678,6 +1785,61 @@ async function renderComparePeriods(rowsAll){
 }
 
 /***********************
+ * END DAY NON-DESTRUCTIVE
+ ***********************/
+async function endCurrentDay(){
+  if(!currentUser?.id) return;
+
+  const day = todayISO();
+
+  endedDayISO = day;
+  endedDayFinalSeconds = effectiveFocusSeconds();
+  endedDayFinalSessions = sessionsForHistory();
+
+  await upsertDailyHistory(currentUser.id);
+
+  stopTick();
+  targetEndTime = null;
+  pausedRemainingSeconds = null;
+
+  pausedFocusedSecSnapshot = null;
+  pausedRemainingFocusSecSnapshot = null;
+
+  totalFocusSeconds = 0;
+  sessionsCompleted = 0;
+  taskCountedSeconds = 0;
+
+  currentMode = "task";
+  taskInitialSeconds = null;
+
+  lastSoundCueKey = null;
+
+  $("#playPauseButton").attr("class","fa fa-play fa-stack-1x");
+
+  const sessionS = parseDurationToSeconds($("#sessionLengthInput").val()) || 0;
+  startSeconds = sessionS;
+
+  showClock(sessionS);
+  updateRing(0);
+
+  renderSessions();
+  renderFocus();
+  renderCompletedMinutes();
+  updateStatsUI();
+
+  perfCacheRows = null;
+
+  await saveTimerState();
+  await loadHistory().catch(()=>{});
+  await loadLeaderboard().catch(()=>{});
+  await loadPerformance().catch(()=>{});
+
+  if(calendarEnabled){
+    await renderCalendar().catch(()=>{});
+  }
+}
+
+/***********************
  * RESET DAY
  ***********************/
 async function resetTodayData(){
@@ -1690,6 +1852,11 @@ async function resetTodayData(){
     .delete()
     .eq("user_id", currentUser.id)
     .eq("day", day);
+
+  endedDayISO = null;
+  endedDayFinalSeconds = null;
+  endedDayFinalSessions = null;
+  goalExplodedTodayISO = null;
 
   totalFocusSeconds = 0;
   sessionsCompleted = 0;
@@ -1774,7 +1941,6 @@ async function login(){
   ensureAutosave();
   await saveAllIfSecondChanged();
 
-  // ✅ start quotes loop when logged in
   startQuotesLoop();
 
   setAuthStatus("✅ Connecté.");
@@ -1790,17 +1956,14 @@ function logout(){
   lastSavedEpochSec = null;
   perfCacheRows = null;
 
-  // calendar resets
   calendarEnabled = false;
   calMonthOffset = 0;
   calClickStart = null;
   calClickEnd = null;
   calPeriods = [];
 
-  // sound cue guard reset
   lastSoundCueKey = null;
 
-  // ✅ stop quotes loop
   stopQuotesLoop();
 
   showAuth();
@@ -1832,7 +1995,6 @@ $(function(){
 
   $("#btnCloseStats").on("click", function(){ closeTopPanels(); });
 
-  // ✅ toggle calendar
   $("#btnToggleCalendar").on("click", function(){
     calendarEnabled = !calendarEnabled;
     updateCalendarButtonUI();
@@ -1856,7 +2018,6 @@ $(function(){
     loadPerformance().catch(()=>{});
   });
 
-  // ✅ Mode minimaliste : cache/affiche 5 anneaux
   $("#btnMinimalMode").on("click", function(){
     document.body.classList.toggle("minimal-mode");
   });
@@ -1874,6 +2035,10 @@ $(function(){
   $("#btnResetDayConfirm").on("click", async function(){
     $("#resetDayModal").modal("hide");
     try{ await resetTodayData(); } catch(e){ console.warn("[reset day]", e); }
+  });
+
+  $("#endDayButton").on("click", function(){
+    endCurrentDay().catch(e => console.warn("[end day]", e));
   });
 
   $(".perf-tab").on("click", function(){
@@ -1909,7 +2074,6 @@ $(function(){
 
   document.addEventListener('visibilitychange', hardUpdateFromNow);
 
-  // Play / Pause (inchangé)
   $('#playPauseButton').on('click', function(){
     var sessionS = parseDurationToSeconds($('#sessionLengthInput').val()) || 0;
     var breakS   = parseDurationToSeconds($('#breakLengthInput').val())   || 0;
@@ -1951,7 +2115,6 @@ $(function(){
       pausedFocusedSecSnapshot = null;
       pausedRemainingFocusSecSnapshot = null;
 
-      // allow new 1-second cue for resumed segment
       lastSoundCueKey = null;
 
       if(pausedRemainingSeconds != null){
@@ -1985,7 +2148,6 @@ $(function(){
     }
   });
 
-  // Reset (inchangé)
   $('#resetClockButton').on('click', function(){
     stopTick();
     targetEndTime=null;
@@ -1995,7 +2157,6 @@ $(function(){
     pausedFocusedSecSnapshot=null;
     pausedRemainingFocusSecSnapshot=null;
 
-    // reset sound cue guard
     lastSoundCueKey = null;
 
     $('#playPauseButton').attr('class','fa fa-play fa-stack-1x');
@@ -2018,7 +2179,6 @@ $(function(){
     saveAllIfSecondChanged().catch(()=>{});
   });
 
-  // init
   showAuth();
   setAuthStatus("");
   $('#goalTimeInput').val('10h');
@@ -2040,7 +2200,6 @@ $(function(){
   $("#perfCalendarWrap").hide();
   updateCalendarButtonUI();
 
-  // ✅ ensure mini rings start EMPTY (no green at start)
   setMiniRingProgress("ringRemFocusProg", 0);
   setMiniRingProgress("ringFocusProg", 0);
   setMiniRingProgress("ringSessRemProg", 0);
@@ -2052,7 +2211,6 @@ $(function(){
   renderCompletedMinutes();
   updateRing(0);
 
-  // initial quote (before login it's ok)
   setRandomQuote(true);
 
   var sessionS = parseDurationToSeconds($('#sessionLengthInput').val()) || 2*3600;

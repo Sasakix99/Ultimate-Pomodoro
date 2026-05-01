@@ -432,3 +432,27 @@ html, body { height:100%; background:#191919 !important; margin:0; }
   .perf-stats{ grid-template-columns: 1fr; }
   .performance-panel{ width: min(520px, calc(100vw - 20px)); }
 }
+
+/* ✅ Animation objectif atteint */
+.goal-explode{
+  animation: goalExplode 900ms ease-out;
+}
+
+@keyframes goalExplode{
+  0%{
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  30%{
+    transform: scale(1.18);
+    filter: brightness(1.8);
+  }
+  60%{
+    transform: scale(0.92);
+    filter: brightness(1.3);
+  }
+  100%{
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}

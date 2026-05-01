@@ -3,8 +3,9 @@
 
   <head>
     <meta charset="UTF-8">
-    <title>Untitled</title>
-    <link rel="stylesheet" href="./style.css">
+    <title>Ultimate Pomodoro </title>
+    <link rel='stylesheet' href='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.csshttps://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css'>
+<link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css'><link rel="stylesheet" href="./style.css">
 
   </head>
     
@@ -86,7 +87,6 @@
             <p><label id="notificationsLabel"><input id="notify" type="checkbox"> Desktop Notifications</label></p>
           </div>
 
-          <!-- ✅ Mode minimaliste -->
           <div style="margin-top:10px;">
             <button id="btnMinimalMode" class="btn btn-primary btn-xs" type="button">
               Mode minimaliste
@@ -265,11 +265,9 @@
           </div>
         </div>
       </div>
-      <!-- /Stats -->
     </div>
-    <!-- /top tabs -->
 
-    <!-- Connexion (inchangée sauf champ password + bouton toggle) -->
+    <!-- Connexion -->
     <div id="authBox" class="row" style="margin-top:12px;">
       <div class="col-xs-10 col-xs-offset-1">
         <div class="panel panel-default auth-panel">
@@ -279,7 +277,6 @@
               <input id="authUsername" class="form-control" placeholder="ex: ata" autocomplete="username" />
             </div>
 
-            <!-- password masqué + bouton afficher/masquer -->
             <div class="form-group" style="position:relative;">
               <label class="muted">Mot de passe</label>
               <input id="authCode" type="password" class="form-control" placeholder="ex: mot secret" autocomplete="current-password" />
@@ -316,15 +313,12 @@
     <!-- APP -->
     <div id="appMain" style="display:none;">
 
-      <!-- STAGE: anneau central + 5 anneaux -->
       <div class="rings-stage">
 
-        <!-- minis -->
         <div class="mini-ring pos-tl" aria-label="Temps de focus restant">
           <svg class="mini-svg" viewBox="0 0 120 120">
             <circle class="mini-bg" cx="60" cy="60" r="52"></circle>
-            <circle id="ringRemFocusProg" class="mini-prog" cx="60" cy="60" r="52"
-                    transform="rotate(-90 60 60)"></circle>
+            <circle id="ringRemFocusProg" class="mini-prog" cx="60" cy="60" r="52" transform="rotate(-90 60 60)"></circle>
           </svg>
           <div class="mini-center">
             <div class="mini-label">Focus restant</div>
@@ -336,8 +330,7 @@
         <div class="mini-ring pos-tr" aria-label="Focus">
           <svg class="mini-svg" viewBox="0 0 120 120">
             <circle class="mini-bg" cx="60" cy="60" r="52"></circle>
-            <circle id="ringFocusProg" class="mini-prog" cx="60" cy="60" r="52"
-                    transform="rotate(-90 60 60)"></circle>
+            <circle id="ringFocusProg" class="mini-prog" cx="60" cy="60" r="52" transform="rotate(-90 60 60)"></circle>
           </svg>
           <div class="mini-center">
             <div class="mini-label">Focus</div>
@@ -349,8 +342,7 @@
         <div class="mini-ring pos-bl" aria-label="Sessions restantes">
           <svg class="mini-svg" viewBox="0 0 120 120">
             <circle class="mini-bg" cx="60" cy="60" r="52"></circle>
-            <circle id="ringSessRemProg" class="mini-prog" cx="60" cy="60" r="52"
-                    transform="rotate(-90 60 60)"></circle>
+            <circle id="ringSessRemProg" class="mini-prog" cx="60" cy="60" r="52" transform="rotate(-90 60 60)"></circle>
           </svg>
           <div class="mini-center">
             <div class="mini-label">Sessions restantes</div>
@@ -362,8 +354,7 @@
         <div class="mini-ring pos-br" aria-label="Sessions">
           <svg class="mini-svg" viewBox="0 0 120 120">
             <circle class="mini-bg" cx="60" cy="60" r="52"></circle>
-            <circle id="ringSessionsProg" class="mini-prog" cx="60" cy="60" r="52"
-                    transform="rotate(-90 60 60)"></circle>
+            <circle id="ringSessionsProg" class="mini-prog" cx="60" cy="60" r="52" transform="rotate(-90 60 60)"></circle>
           </svg>
           <div class="mini-center">
             <div class="mini-label">Sessions</div>
@@ -375,8 +366,7 @@
         <div class="mini-ring pos-bm mini-eta" aria-label="Fin du focus">
           <svg class="mini-svg" viewBox="0 0 120 120">
             <circle class="mini-bg" cx="60" cy="60" r="52"></circle>
-            <circle id="ringEtaProg" class="mini-prog" cx="60" cy="60" r="52"
-                    transform="rotate(-90 60 60)"></circle>
+            <circle id="ringEtaProg" class="mini-prog" cx="60" cy="60" r="52" transform="rotate(-90 60 60)"></circle>
           </svg>
           <div class="mini-center">
             <div class="mini-label">Fin</div>
@@ -385,21 +375,16 @@
           </div>
         </div>
 
-        <!-- central -->
         <div class="ring-wrap ring-main center-block">
           <svg class="progress-ring" viewBox="0 0 180 180" aria-label="Progress">
-            <circle class="ring-bg" cx="90" cy="90" r="80"
-                    fill="none" stroke="#ffffff" stroke-opacity="0.14" stroke-width="2"></circle>
-            <circle id="ringProgress" class="ring-prog" cx="90" cy="90" r="80"
-                    fill="none" stroke="#22C55E" stroke-width="2" stroke-linecap="round"
-                    transform="rotate(-90 90 90)"></circle>
+            <circle class="ring-bg" cx="90" cy="90" r="80" fill="none" stroke="#ffffff" stroke-opacity="0.14" stroke-width="2"></circle>
+            <circle id="ringProgress" class="ring-prog" cx="90" cy="90" r="80" fill="none" stroke="#22C55E" stroke-width="2" stroke-linecap="round" transform="rotate(-90 90 90)"></circle>
           </svg>
 
           <div class="ring-center">
             <div class="ring-center-inner">
               <div id="clockTime" class="clock-time"></div>
 
-              <!-- Quote -->
               <div id="quoteWrap" class="quote-wrap">
                 <div id="quoteText" class="quote-text"></div>
                 <div id="quoteAuthor" class="quote-author"></div>
@@ -409,23 +394,27 @@
         </div>
 
       </div>
-      <!-- /rings-stage -->
 
-      <!-- Boutons Play / Reset -->
+      <!-- Boutons Play / Reset / Fin de journée -->
       <div class="row">
         <div class="play-reset-row">
           <span class="fa-stack fa-md icon" title="Play / Pause">
             <i class="fa fa-circle fa-stack-2x fa-inverse"></i>
             <i id="playPauseButton" class="fa fa-play fa-stack-1x"></i>
           </span>
+
           <span class="fa-stack fa-md icon" title="Reset (ne remet pas Focus/Sessions)">
             <i class="fa fa-circle fa-stack-2x fa-inverse"></i>
             <i id="resetClockButton" class="fa fa-refresh fa-stack-1x"></i>
           </span>
+
+          <span class="fa-stack fa-md icon" title="Terminer la journée">
+            <i class="fa fa-circle fa-stack-2x fa-inverse"></i>
+            <i id="endDayButton" class="fa fa-stop fa-stack-1x"></i>
+          </span>
         </div>
       </div>
 
-      <!-- éléments legacy cachés -->
       <div class="legacy-hidden">
         <div class="row info-row top-row">
           <div class="col-xs-4 info-left">
@@ -485,7 +474,9 @@
   <script src="app.js"></script>
 </body>
 </html>
-    <script  src="./script.js"></script>
+    <script src='https://code.jquery.com/jquery-2.2.1.min.js'></script>
+<script src='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js'></script>
+<script src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'></script><script  src="./script.js"></script>
 
   </body>
   
