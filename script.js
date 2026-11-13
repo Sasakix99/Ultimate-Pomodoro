@@ -11,6 +11,7 @@ const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 let currentUser = null;
 let autosaveInterval = null;
 let lastSavedEpochSec = null;
+let saveInFlight = null;
 
 let endedDayISO = null;
 let endedDayFinalSeconds = null;
@@ -504,7 +505,7 @@ function hardUpdateFromNow(){
   updateStatsUI();
   renderFocus();
   renderCompletedMinutes();
-  saveAllIfSecondChanged().catch(()=>{});
+  saveAllIfSecondChanged(true).catch(()=>{});
 }
 
 function tick(){
@@ -544,21 +545,26 @@ function tick(){
 /***********************
  * SAVE EACH SECOND
  ***********************/
-async function saveAllIfSecondChanged(){
+async function saveAllIfSecondChanged(force=false){
   if(!currentUser?.id) return;
   const nowSec = Math.floor(Date.now()/1000);
-  if(lastSavedEpochSec === nowSec) return;
-  lastSavedEpochSec = nowSec;
-
-  await saveTimerState();
-  await upsertDailyHistory(currentUser.id);
-
-  if($("#panelPerformance").is(":visible")){
-    loadPerformance().catch(()=>{});
-    if(calendarEnabled){
-      renderCalendar().catch(()=>{});
-    }
+  if(!force && lastSavedEpochSec != null && nowSec - lastSavedEpochSec < 60) return;
+  if(saveInFlight){
+    if(!force) return;
+    await saveInFlight;
   }
+  lastSavedEpochSec = nowSec;
+  saveInFlight = (async () => {
+    await saveTimerState();
+    await upsertDailyHistory(currentUser.id);
+    perfCacheRows = null;
+    if($("#panelPerformance").is(":visible")){
+      await loadPerformance();
+      if(calendarEnabled) await renderCalendar();
+    }
+  })();
+  try { await saveInFlight; }
+  finally { saveInFlight = null; }
 }
 
 /***********************
@@ -592,7 +598,6 @@ function isTaskInProgress(){
 }
 
 function sessionsForHistory(){
-  if(isTaskInProgress()) return Math.max(1, sessionsCompleted);
   return sessionsCompleted;
 }
 
@@ -633,10 +638,6 @@ function onSegmentEnd(){
     sessionsCompleted += 1;
     renderSessions();
 
-    if(currentUser?.id){
-      upsertDailyHistory(currentUser.id).catch(()=>{});
-    }
-
     launchConfetti();
 
     startNext('break');
@@ -644,7 +645,7 @@ function onSegmentEnd(){
     startNext('task');
   }
 
-  saveAllIfSecondChanged().catch(()=>{});
+  saveAllIfSecondChanged(true).catch(()=>{});
 }
 
 /***********************
@@ -681,7 +682,7 @@ function startNext(mode){
   renderCompletedMinutes();
 
   ensureAutosave();
-  saveAllIfSecondChanged().catch(()=>{});
+  saveAllIfSecondChanged(true).catch(()=>{});
 }
 
 /***********************
@@ -769,6 +770,7 @@ function updateStatsUI(){
  ***********************/
 function buildStateJSON(){
   return {
+    stateDayISO: todayISO(),
     goalTimeInput: $('#goalTimeInput').val(),
     sessionLengthInput: $('#sessionLengthInput').val(),
     breakLengthInput: $('#breakLengthInput').val(),
@@ -794,13 +796,22 @@ function buildStateJSON(){
   };
 }
 
-function applyStateJSON(state){
+function applyStateJSON(state, updatedAt){
   if(!state || typeof state !== "object") return;
 
   if(state.goalTimeInput != null) $('#goalTimeInput').val(state.goalTimeInput);
   if(state.sessionLengthInput != null) $('#sessionLengthInput').val(state.sessionLengthInput);
   if(state.breakLengthInput != null) $('#breakLengthInput').val(state.breakLengthInput);
   if(state.perpetual != null) $('#perpetual').prop('checked', !!state.perpetual);
+  const savedDay = state.stateDayISO || (updatedAt ? [
+    new Date(updatedAt).getFullYear(),
+    String(new Date(updatedAt).getMonth()+1).padStart(2,'0'),
+    String(new Date(updatedAt).getDate()).padStart(2,'0')
+  ].join('-') : null);
+  if(savedDay && savedDay !== todayISO()){
+    updateStatsUI();
+    return;
+  }
 
   startSeconds = state.startSeconds ?? startSeconds;
   totalFocusSeconds = state.totalFocusSeconds ?? totalFocusSeconds;
@@ -855,13 +866,13 @@ async function saveTimerState(){
     .from("timer_state")
     .upsert(payload, { onConflict: "user_id" });
 
-  if(error) console.warn("[timer_state save]", error.message);
+  if(error) throw error;
 }
 
 async function loadTimerState(){
   const { data, error } = await db
     .from("timer_state")
-    .select("state_json")
+    .select("state_json, updated_at")
     .eq("user_id", currentUser.id)
     .maybeSingle();
 
@@ -870,7 +881,7 @@ async function loadTimerState(){
     return;
   }
   if(data && data.state_json){
-    applyStateJSON(data.state_json);
+    applyStateJSON(data.state_json, data.updated_at);
   }
 }
 
@@ -928,44 +939,15 @@ function mergeDailyRows(rows){
 
 async function upsertDailyHistory(userId){
   const day = todayISO();
-
-  let focused_seconds = effectiveFocusSeconds();
-  let sessions_completed = sessionsForHistory();
-
-  if(endedDayISO === day && endedDayFinalSeconds != null){
-    focused_seconds = endedDayFinalSeconds;
-    sessions_completed = endedDayFinalSessions || 0;
-  }
-
-  try{
-    const { error } = await db
-      .from("focus_history")
-      .upsert(
-        [{ user_id: userId, day, focused_seconds, sessions_completed }],
-        { onConflict: "user_id,day" }
-      );
-
-    if(!error) return;
-    console.warn("[focus_history upsert]", error.message);
-  } catch(e){
-    console.warn("[focus_history upsert exception]", e);
-  }
-
-  const { data: existing } = await db
-    .from("focus_history")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("day", day)
-    .maybeSingle();
-
-  if(existing?.id){
-    await db.from("focus_history")
-      .update({ focused_seconds, sessions_completed })
-      .eq("id", existing.id);
-  } else {
-    await db.from("focus_history")
-      .insert([{ user_id: userId, day, focused_seconds, sessions_completed }]);
-  }
+  const focused_seconds = endedDayISO === day && endedDayFinalSeconds != null
+    ? endedDayFinalSeconds : effectiveFocusSeconds();
+  const sessions_completed = endedDayISO === day && endedDayFinalSessions != null
+    ? endedDayFinalSessions : sessionsCompleted;
+  const { error } = await db.from("focus_history").upsert(
+    { user_id: userId, day, focused_seconds, sessions_completed },
+    { onConflict: "user_id,day" }
+  );
+  if(error) throw error;
 }
 
 async function loadHistory(){
@@ -1231,7 +1213,7 @@ async function fetchPerfRowsIfNeeded(){
     .from("focus_history")
     .select("day, focused_seconds, sessions_completed")
     .eq("user_id", currentUser.id)
-    .order("day", { ascending: true })
+    .order("day", { ascending: false })
     .limit(450);
 
   if(error){
@@ -1932,6 +1914,16 @@ async function login(){
   updateRing(0);
 
   perfCacheRows = null;
+  totalFocusSeconds = 0;
+  sessionsCompleted = 0;
+  taskInitialSeconds = null;
+  taskCountedSeconds = 0;
+  targetEndTime = null;
+  pausedRemainingSeconds = null;
+  endedDayISO = null;
+  endedDayFinalSeconds = null;
+  endedDayFinalSessions = null;
+  currentMode = "task";
 
   await loadTimerState();
   await loadHistory();
@@ -1939,7 +1931,7 @@ async function login(){
   await loadPerformance().catch(()=>{});
 
   ensureAutosave();
-  await saveAllIfSecondChanged();
+  await saveAllIfSecondChanged(true).catch(e => console.warn("[initial save]", e));
 
   startQuotesLoop();
 
@@ -1954,6 +1946,7 @@ function logout(){
 
   if(autosaveInterval){ clearInterval(autosaveInterval); autosaveInterval = null; }
   lastSavedEpochSec = null;
+  saveInFlight = null;
   perfCacheRows = null;
 
   calendarEnabled = false;
@@ -1976,8 +1969,8 @@ function logout(){
 function ensureAutosave(){
   if(autosaveInterval) return;
   autosaveInterval = setInterval(() => {
-    saveAllIfSecondChanged().catch(()=>{});
-  }, 250);
+    saveAllIfSecondChanged().catch(e => console.warn("[autosave]", e));
+  }, 60000);
 }
 
 /***********************
@@ -2069,7 +2062,7 @@ $(function(){
     updateStatsUI();
     renderFocus();
     renderCompletedMinutes();
-    saveAllIfSecondChanged().catch(()=>{});
+    saveAllIfSecondChanged(true).catch(()=>{});
   });
 
   document.addEventListener('visibilitychange', hardUpdateFromNow);
@@ -2107,7 +2100,7 @@ $(function(){
       updateStatsUI();
 
       ensureAutosave();
-      saveAllIfSecondChanged().catch(()=>{});
+      saveAllIfSecondChanged(true).catch(()=>{});
 
     } else {
       $(this).attr('class','fa fa-pause fa-stack-1x');
@@ -2144,7 +2137,7 @@ $(function(){
       }
 
       ensureAutosave();
-      saveAllIfSecondChanged().catch(()=>{});
+      saveAllIfSecondChanged(true).catch(()=>{});
     }
   });
 
@@ -2176,7 +2169,7 @@ $(function(){
     renderCompletedMinutes();
 
     ensureAutosave();
-    saveAllIfSecondChanged().catch(()=>{});
+    saveAllIfSecondChanged(true).catch(()=>{});
   });
 
   showAuth();
