@@ -547,6 +547,7 @@ function tick(){
  ***********************/
 async function saveAllIfSecondChanged(force=false){
   if(!currentUser?.id) return;
+  if(!force && targetEndTime == null) return;
   const nowSec = Math.floor(Date.now()/1000);
   if(!force && lastSavedEpochSec != null && nowSec - lastSavedEpochSec < 60) return;
   if(saveInFlight){
